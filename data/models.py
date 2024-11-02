@@ -2,6 +2,10 @@ import json
 from datetime import datetime, UTC
 from dataclasses import dataclass, asdict, fields
 
+from bson import ObjectId
+
+IGNORE_FIELDS = ["_id"]
+
 
 @dataclass
 class BaseModel():
@@ -26,14 +30,22 @@ class BaseModel():
     def to_json(self):
         return json.dumps(asdict(self))
     
-    def to_mongo(self):
-        data = asdict(self)
-        return data
+    def get_write_obj(self) -> dict:
+        ret = dict()
+        for f in fields(self):
+            # we don't want to return the mongodb _id field
+            if f.name not in IGNORE_FIELDS:
+                ret[f.name] = getattr(self, f.name)
+        return ret
 
 @dataclass
 class Watchlist(BaseModel):
-    _id: str = None
+    _id: ObjectId = None
     symbol: str = None
     is_active: bool = True
     last_buy_at: datetime = None
     last_sell_at: datetime = None
+
+@dataclass
+class Order(BaseModel):
+    pass

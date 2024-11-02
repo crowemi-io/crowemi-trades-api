@@ -41,39 +41,39 @@ def main():
         - sell:
     '''
     # TODO: fix the logging :(
-    MONGO_CLIENT.log("Starting trading bot", SESSION_ID, "info")
-
+    MONGO_CLIENT.log("Start", SESSION_ID, "info")
     ret = MONGO_CLIENT.read("watchlist", {"is_active": True})
-    r = [Watchlist.from_mongo(doc) for doc in ret]
+    # r = [Watchlist.from_mongo(doc) for doc in ret]
 
-    print(ret)
+    # print(ret)
 
-    a = Watchlist("AAPL")    
-    b = a.to_json()
-    c = Watchlist.from_json(b)
-    print(c)
+    # a = Watchlist("AAPL")    
+    # b = a.to_json()
+    # c = Watchlist.from_json(b)
+    # print(c)
 
 
-    if ret.status_code == 200:
-        ret = json.loads(ret.content)
-        print(ret)
+    # if ret.status_code == 200:
+    #     ret = json.loads(ret.content)
+    #     print(ret)
+    MONGO_CLIENT.log("End", SESSION_ID, "info")
  
+
+
+
+def buy(symbol: str, notional: float):
+    MONGO_CLIENT.log(f"buying stock {symbol}@{notional}", SESSION_ID, "info")
     payload = {
         "side": "buy",
         "type": "market",
         "time_in_force": "day",
-        "notional": "10",
-        "symbol": "AAPL"
+        "notional": notional,
+        "symbol": symbol
     }
     order = TRADING_CLIENT.create_order(payload)
     order = json.loads(order.content)   
 
     ret = MONGO_CLIENT.write("trades", order) 
-    print(order)
-
-
-def buy():
-    pass
 
 def sell():
     pass
