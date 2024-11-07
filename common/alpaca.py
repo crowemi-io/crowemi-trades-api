@@ -36,6 +36,8 @@ class TradingClient(Client):
     def get_watchlist(self):
         return self.get(f"{self.base_url}/v2/watchlists")
         
+    def get_clock(self):
+        return self.get(f"{self.base_url}/v2/clock")
 
     def create_order(self, payload: dict):
         return self.post(f"{self.base_url}/v2/orders", payload)
@@ -48,10 +50,14 @@ class TradingDataClient(Client):
     def __init__(self, api_key, api_secret_key, base_url):
         super().__init__(api_key, api_secret_key, base_url)
 
+    def get_latest(self, symbol: str, feed: str = "iex"):
+        return self.get(f"{self.base_url}/v2/stocks/bars/latest?symbols={symbol}&feed={feed}")
+
     def get_snapshot(self, asset: str, feed: str = "iex"):
         url = f"{self.base_url}/v2/stocks/{asset}/snapshot?feed={feed}"
         return self.get(url)
     
     def get_historical_bars(self, asset: str, timeframe: str, limit: int, start: str, end: str):
         url = f"{self.base_url}/v2/stocks/{asset}/bars?timeframe={timeframe}&start={start}&end={end}&limit={limit}&adjustment=raw&feed=iex&sort=desc"
-        return self.get(url)
+        r = self.get(url)
+        return r

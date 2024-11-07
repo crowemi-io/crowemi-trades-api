@@ -44,8 +44,33 @@ class Watchlist(BaseModel):
     symbol: str = None
     is_active: bool = True
     last_buy_at: datetime = None
+    last_buy_session: str = None
     last_sell_at: datetime = None
+    last_sell_session: str = None
+    total_buy: int = 0
+    total_sell: int = 0
+    total_profit: float = 0.0
+    
 
 @dataclass
-class Order(BaseModel):
-    pass
+class OrderBatch(BaseModel):
+    _id: ObjectId = None
+    symbol: str = None
+    quantity: float = None
+    notional: float = None
+    status: str = None
+
+    buy_order_id: str = None
+    buy_price: float = None
+    buy_at_utc: datetime = None
+    buy_session: str = None
+
+    sell_order_id: str = None
+    sell_price: float = None
+    sell_at_utc: datetime = None
+    sell_session: str = None
+
+    created_at_session: str = None
+    created_at: datetime = None
+    last_updated_at_session: str = None
+    last_updated_at: datetime = None
