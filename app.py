@@ -3,6 +3,8 @@ import json
 import uuid
 from datetime import datetime, timedelta, UTC
 
+import polars as pl
+
 from common.helper import Helper
 from common.alpaca import TradingClient, TradingDataClient
 
@@ -22,6 +24,8 @@ MONGO_CLIENT = DataClient(os.getenv("MONGODB_URI"))
 DEBUG = os.getenv("DEBUG", False)
 SESSION_ID = uuid.uuid4().hex
 BATCH_SIZE = 10
+TAKE_PROFIT = .0025
+STRICT_PDT = False
 
 DEFAULT_SYMBOLS = [
     "AAPL",
@@ -35,47 +39,70 @@ DEFAULT_SYMBOLS = [
 
 
 def main():
-    # 1. get symbols in play 
-    MONGO_CLIENT.log("Start", SESSION_ID, LogLevel.INFO)
+    log("Start", LogLevel.INFO)
     # is the market open?
-    clock = json.loads(TRADING_CLIENT.get_clock().content)
+    clock = TRADING_CLIENT.get_clock()
     if not clock['is_open']:
         # if the market is closed, exit the application (unless debug is enabled)
-        MONGO_CLIENT.log(f"Market is closed.", SESSION_ID, LogLevel.WARNING, {"clock": clock})
+        log(f"Market is closed.", LogLevel.WARNING, {"clock": clock})
         if not DEBUG:
             exit(0)
     
     active_symbols = [Watchlist.from_mongo(doc) for doc in MONGO_CLIENT.read("watchlist", {"is_active": True})]
 
-    # 2. get current position data
     for a in active_symbols:
-        order_batch = MONGO_CLIENT.read("orders", {"symbol": a.symbol})
+        latest_bar = DATA_CLIENT.get_latest_bar(a.symbol)['bars']
+        
+        alpaca_orders = TRADING_CLIENT.get_orders(a.symbol)
+        order_batch = [OrderBatch.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"symbol": a.symbol})]
+        
+        missing_orders = [order for order in alpaca_orders if order.get("id") not in [o.buy_order_id for o in order_batch]]
+        if missing_orders:
+            [write_order_batch(create_order_batch(order)) for order in missing_orders]
+
+        # TODO: update orders
+
+        # after updating orders, get those orders that have been filled
+        order_batch = [OrderBatch.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"symbol": a.symbol, "status": "filled"})]
+
         # no open orders
         if not order_batch:
-            MONGO_CLIENT.log(f"No active orders {a.symbol}; running entry.", SESSION_ID, "info")
-            # should we enter a position?
+            log(f"No active orders {a.symbol}; running entry.", LogLevel.INFO)
             if entry(a.symbol):
-                MONGO_CLIENT.log(f"Entering position for {a.symbol}.", SESSION_ID, "info")
                 buy(a, BATCH_SIZE)
             else:
-                MONGO_CLIENT.log(f"No entry point found for {a.symbol}", SESSION_ID, "info")
-        # open orders
+                log(f"No entry point found for {a.symbol}", LogLevel.INFO)
         else:
-            MONGO_CLIENT.log(f"Active orders found {a.symbol}; running sell.", SESSION_ID, "info")
-            # determine if we should sell
-            #   1. the previous buy has increased by 2.5%
-            # determine if we should buy
+            log(f"Active orders found {a.symbol}; total orders {len(order_batch)}; running sell.", LogLevel.INFO)
+            # important! we can sell stock before we buy
+            if STRICT_PDT:
+                # we need to skip the sell if we purchased the stock today
+                pdt = [order for order in order_batch if order.buy_at_utc.date() == datetime.now(UTC).date()]
+                if len(pdt) > 0:
+                    log(f"Stock {a.symbol} was purchased today {datetime.now(UTC).date()}, skipping sell.", LogLevel.INFO)
+                    break
+
+            for order in order_batch:
+                target_price = ((order.buy_price * TAKE_PROFIT) + order.buy_price)
+                latest_price = float(latest_bar[a.symbol]['c'])
+                log(f"Target price: {target_price}; Latest bar: {latest_price}", LogLevel.INFO)
+                if target_price <= latest_price:
+                    sell(a, order)
+
+            # TODO: determine if we should buy next batch
             #   1. the previous buy has dropped by 2.5%
             #   2. we have less than or equal to 5 open positions
             # sell(a.symbol)
-    
-    # 3. determine if action is needed
 
-    MONGO_CLIENT.log("End", SESSION_ID, "info")
+    log("End", LogLevel.INFO)
+
+def log(message: str, log_level: str = "info", obj: dict = None):
+    MONGO_CLIENT.log(message, SESSION_ID, log_level, obj)
+
 
 def entry(symbol: str) -> bool:
     ret = False # innocent until proven guilty
-    snapshot = json.loads(DATA_CLIENT.get_snapshot(symbol).content)
+    snapshot = DATA_CLIENT.get_snapshot(symbol)
 
     last_open = snapshot.get("dailyBar")['o']
     last_close = snapshot.get("dailyBar")['c']
@@ -84,7 +111,7 @@ def entry(symbol: str) -> bool:
     sixty_days = (today - timedelta(days=60))
 
     bars = DATA_CLIENT.get_historical_bars(symbol, "1D", 1000, f'{sixty_days.year}-{sixty_days.month:02}-{sixty_days.day:02}', f'{today.year}-{today.month:02}-{today.day:02}')
-    bars = json.loads(bars.content)
+    
     # process the last 7 days
     data = list()
     days = [30]
@@ -99,44 +126,72 @@ def entry(symbol: str) -> bool:
     
     return ret
 
-def buy(wl: Watchlist, notional: float):
-    MONGO_CLIENT.log(f"buying stock {wl.symbol}@{notional}", SESSION_ID, "info")
+def buy(w: Watchlist, notional: float):
     payload = {
         "side": "buy",
         "type": "market",
         "time_in_force": "day",
         "notional": notional,
-        "symbol": wl.symbol
+        "symbol": w.symbol
     }
-    MONGO_CLIENT.log(f"buying stock {wl.symbol}@{notional}", SESSION_ID, LogLevel.INFO, payload)
-    order = json.loads(TRADING_CLIENT.create_order(payload).content)   
-    # what data points do we need to capture for our trade?
-    # sell_point = (current_open * .0025) + current_open 2024-11-07T02:58:52.270622125Z
+    MONGO_CLIENT.log(f"buying stock {w.symbol}@{notional}", LogLevel.INFO, payload)
+    order = TRADING_CLIENT.create_order(payload)
+    if order.get("status", None) == "pending_new":
+        # sometimes the order doesn't process immediately
+        order = TRADING_CLIENT.get_order(order.get("id"))
+
+    order_batch = create_order_batch(order)
+    write_order_batch(order_batch)
+
+    w.update_buy(SESSION_ID)
+    MONGO_CLIENT.update("watchlist", {"symbol": w.symbol}, w.to_mongo(), upsert=False)
+
+def sell(w: Watchlist, o: OrderBatch):
+    payload = {
+        "side": "sell",
+        "type": "market",
+        "time_in_force": "day",
+        "notional": o.notional,
+        "symbol": w.symbol
+    }
+    MONGO_CLIENT.log(f"selling stock {w.symbol}", LogLevel.INFO, payload)
+    order = TRADING_CLIENT.create_order(payload)
+    
+    o.sell_order_id = order.get("id", None)
+    o.sell_status = order.get("status", None)
+    o.sell_price = float(order.get("filled_avg_price", None))
+    o.sell_at_utc = datetime.now(UTC)
+
+    w.update_sell(SESSION_ID)
+
+
+def write_order_batch(order_batch: OrderBatch) -> None:
+    MONGO_CLIENT.write("order", order_batch.to_mongo())
+
+def create_order_batch(order) -> OrderBatch:
+    filled_avg_price = order.get("filled_avg_price", None)
+    filled_avg_price = float(filled_avg_price) if filled_avg_price else None
+    filled_qty = order.get("filled_qty", None)
+    filled_qty = float(filled_qty) if filled_qty else None
+
+
     order_batch = OrderBatch(
         symbol = order.get("symbol", None),
-        quantity = order.get("qty", None),
-        notional = notional,
-        status = order.get("status", None),
+        quantity = filled_qty,
+        notional = order.get("notional", None),
+        buy_status = order.get("status", None),
         buy_order_id = order.get("id", None),
-        buy_price = order.get("price", None),
-        buy_at_utc = None,
-        buy_session = None,
-        sell_order_id = None,
-        sell_price = None,
-        sell_at_utc = None,
-        sell_session = None,
+        buy_price = filled_avg_price,
+        buy_at_utc = datetime.now(UTC),
+        buy_session = SESSION_ID,
         created_at_session = SESSION_ID,
         created_at = datetime.fromisoformat(order.get("created_at", None)),
         updated_at_session = SESSION_ID,
-        updated_at =  datetime.fromisoformat(order.get("updated_at", None))
-    )    
+        updated_at = datetime.fromisoformat(order.get("updated_at", None))
+    )
+    
+    return order_batch
 
-    ret = MONGO_CLIENT.write("order", order_batch.get_write_obj())
-    MONGO_CLIENT.update("watchlist", {"symbol": wl.symbol}, {"last_buy_at": datetime.now(UTC), "total_buy": (wl.total_buy + 1), "updated_at": datetime.now(UTC), "updated_at_session": SESSION_ID }, upsert=False)
-    return ret 
-
-def sell():
-    pass
 
 def process_bar(bars: dict, period: int) -> dict:
     # what is the average swing of the stock, last 7 days

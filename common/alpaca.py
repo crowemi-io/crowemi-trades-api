@@ -1,3 +1,4 @@
+import json
 import requests
 
 
@@ -10,11 +11,20 @@ class Client:
         }
         self.base_url = base_url
 
-    def get(self, url):
-        return requests.get(url, headers=self.headers)
+    def get(self, url) -> dict | None:
+        req = requests.get(url, headers=self.headers)
+        if req.status_code == 200:
+            return json.loads(req.content)
+        else:
+            #TODO: do something
+            return None
     
-    def post(self, url, payload):
-        return requests.post(url, json=payload, headers=self.headers)
+    def post(self, url, payload) -> dict | None:
+        req = requests.post(url, json=payload, headers=self.headers)
+        if req.status_code == 200:
+            return json.loads(req.content)
+        else:
+            return None
 
 
 class TradingClient(Client):
@@ -25,13 +35,13 @@ class TradingClient(Client):
         return requests.get(f"{self.base_url}/v2/account", headers=self.headers)
 
     def get_asset(self, asset: str):
-        return requests.get(f"{self.base_url}/v2/assets/{asset}", headers=self.headers)
-    
-    def get_position(self):
-        pass
+        return self.get(f"{self.base_url}/v2/assets/{asset}")
 
-    def get_order(self):
-        pass
+    def get_order(self, order_id: str):
+        return self.get(f"{self.base_url}/v2/orders/{order_id}")
+
+    def get_orders(self, symbol: str) -> list:
+        return self.get(f"{self.base_url}/v2/orders?symbols={symbol}")
 
     def get_watchlist(self):
         return self.get(f"{self.base_url}/v2/watchlists")
@@ -50,8 +60,11 @@ class TradingDataClient(Client):
     def __init__(self, api_key, api_secret_key, base_url):
         super().__init__(api_key, api_secret_key, base_url)
 
-    def get_latest(self, symbol: str, feed: str = "iex"):
+    def get_latest_bar(self, symbol: str, feed: str = "iex"):
         return self.get(f"{self.base_url}/v2/stocks/bars/latest?symbols={symbol}&feed={feed}")
+
+    def get_latest_quote(self, symbol: str, feed: str = "iex"):
+        return self.get(f"{self.base_url}/v2/stocks/quotes/latest?symbols={symbol}&feed={feed}")
 
     def get_snapshot(self, asset: str, feed: str = "iex"):
         url = f"{self.base_url}/v2/stocks/{asset}/snapshot?feed={feed}"
