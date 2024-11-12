@@ -52,8 +52,6 @@ jobs:
       TF_VAR_docker_image_tag: "\"${{ github.sha }}\""
       TF_VAR_service_name: "\"${{ secrets.TF_SERVICE_NAME }}\""
       TF_VAR_google_region: "\"${{ secrets.GCP_REGION }}\""
-      TF_VAR_aws_access_key_id: "\"${{ secrets.AWS_ACCESS_KEY_ID }}\""
-      TF_VAR_aws_secret_access_key: "\"${{ secrets.AWS_SECRET_ACCESS_KEY }}\""
     permissions:
       contents: read
     steps:
