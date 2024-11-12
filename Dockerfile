@@ -16,4 +16,5 @@ COPY app.py app.py
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-ENTRYPOINT [ "sh" ]
+CMD ["echo 'Hello World'"]
+# CMD [ "python", "app.py" ]

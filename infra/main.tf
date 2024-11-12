@@ -5,32 +5,12 @@ locals {
 }
 
 
-resource "google_cloud_run_v2_service" "crowemi_io_api" {
+resource "google_cloud_run_v2_service" "this" {
   name     = local.service
   location = local.region
-  launch_stage = "BETA"
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   template {
     containers {
       image = "us-west1-docker.pkg.dev/${local.project}/crowemi-io/${local.service}:${var.docker_image_tag}"
-      env {
-        name  = "AWS_ACCESS_KEY_ID"
-        value_source {
-          secret_key_ref {
-            secret = data.google_secret_manager_secret.aws_access_key_id.secret_id
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name  = "AWS_SECRET_ACCESS_KEY"
-        value_source {
-          secret_key_ref {
-            secret = data.google_secret_manager_secret.aws_secret_access_key.secret_id
-            version = "latest"
-          }
-        }
-      }
     }
     vpc_access{
       network_interfaces {
@@ -40,26 +20,32 @@ resource "google_cloud_run_v2_service" "crowemi_io_api" {
       }
       egress = "ALL_TRAFFIC"
     }
-    service_account = google_service_account.service_account.email
+    service_account = google_service_account.this.email
   }
 }
 
-data "google_service_account" "srv_crowemi_io" {
-  account_id = "srv-crowemi-io"
-  project = local.project
-}
-data "google_iam_policy" "private" {
-  binding {
-    role = "roles/run.invoker"
-    members = [
-      "serviceAccount:${data.google_service_account.srv_crowemi_io.email}",
-    ]
-  }
-}
-resource "google_cloud_run_service_iam_policy" "private" {
-  location = google_cloud_run_v2_service.crowemi_io_api.location
-  project  = google_cloud_run_v2_service.crowemi_io_api.project
-  service  = google_cloud_run_v2_service.crowemi_io_api.name
+resource "google_cloud_scheduler_job" "crowemi-trades-scheduler" {
+  name             = local.project
+  region           = local.region
+  schedule         = "*/30 * * * *"
+  time_zone        = "America/New_York"
+  attempt_deadline = "320s"
 
-  policy_data = data.google_iam_policy.private.policy_data
+  retry_config {
+    retry_count = 1
+  }
+
+  http_target {
+    http_method = "POST"
+    uri         = google_cloud_run_v2_service.this.uri
+
+    oidc_token {
+      service_account_email = google_service_account.this.email
+    }
+  }
+
+  # Use an explicit depends_on clause to wait until API is enabled
+  depends_on = [
+    google_project_service.scheduler_api
+  ]
 }
