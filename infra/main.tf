@@ -24,7 +24,7 @@ resource "google_cloud_run_v2_service" "this" {
   }
 }
 
-resource "google_cloud_scheduler_job" "crowemi-trades-scheduler" {
+resource "google_cloud_scheduler_job" "this" {
   name             = local.project
   region           = local.region
   schedule         = "*/30 * * * *"
@@ -43,9 +43,4 @@ resource "google_cloud_scheduler_job" "crowemi-trades-scheduler" {
       service_account_email = google_service_account.this.email
     }
   }
-
-  # Use an explicit depends_on clause to wait until API is enabled
-  depends_on = [
-    google_project_service.scheduler_api
-  ]
 }
