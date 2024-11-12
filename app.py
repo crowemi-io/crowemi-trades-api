@@ -23,9 +23,13 @@ MONGO_CLIENT = DataClient(os.getenv("MONGODB_URI"))
 
 DEBUG = os.getenv("DEBUG", False)
 SESSION_ID = uuid.uuid4().hex
+
+TOTAL_ALLOWED_BATCHES = 5
 BATCH_SIZE = 10
-TAKE_PROFIT = .0025
-STRICT_PDT = False
+TAKE_PROFIT = .0025 # .25 percent increase
+STRICT_PDT = True
+OVERRIDE_ENTRY = True
+
 
 DEFAULT_SYMBOLS = [
     "AAPL",
@@ -58,12 +62,11 @@ def main():
         
         missing_orders = [order for order in alpaca_orders if order.get("id") not in [o.buy_order_id for o in order_batch]]
         if missing_orders:
+            log(f"Missing orders found {a.symbol}; total orders {len(missing_orders)}", LogLevel.WARNING)
             [write_order_batch(create_order_batch(order)) for order in missing_orders]
 
-        # TODO: update orders
-
         # after updating orders, get those orders that have been filled
-        order_batch = [OrderBatch.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"symbol": a.symbol, "status": "filled"})]
+        order_batch = [OrderBatch.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"symbol": a.symbol, "buy_status": "filled", "sell_status": None})]
 
         # no open orders
         if not order_batch:
@@ -78,7 +81,7 @@ def main():
             if STRICT_PDT:
                 # we need to skip the sell if we purchased the stock today
                 pdt = [order for order in order_batch if order.buy_at_utc.date() == datetime.now(UTC).date()]
-                if len(pdt) > 0:
+                if len(pdt) >= 0:
                     log(f"Stock {a.symbol} was purchased today {datetime.now(UTC).date()}, skipping sell.", LogLevel.INFO)
                     break
 
@@ -89,10 +92,13 @@ def main():
                 if target_price <= latest_price:
                     sell(a, order)
 
-            # TODO: determine if we should buy next batch
-            #   1. the previous buy has dropped by 2.5%
-            #   2. we have less than or equal to 5 open positions
-            # sell(a.symbol)
+            if len(order_batch) < TOTAL_ALLOWED_BATCHES:
+                #   1. the previous buy has dropped by 2.5%
+                last_order = max(order_batch, key=lambda obj: obj.created_at)
+                if last_order.buy_price - (last_order.buy_price * .025) <= latest_bar[a.symbol]['c']:
+                    buy(a, BATCH_SIZE)
+                else:
+                    log(f"No entry point found for {a.symbol}", LogLevel.INFO)
 
     log("End", LogLevel.INFO)
 
@@ -101,7 +107,11 @@ def log(message: str, log_level: str = "info", obj: dict = None):
 
 
 def entry(symbol: str) -> bool:
-    ret = False # innocent until proven guilty
+    ret = OVERRIDE_ENTRY
+    if ret:
+        log(f"Overriding entry for {symbol}", LogLevel.INFO)
+        return ret
+    
     snapshot = DATA_CLIENT.get_snapshot(symbol)
 
     last_open = snapshot.get("dailyBar")['o']
@@ -127,42 +137,56 @@ def entry(symbol: str) -> bool:
     return ret
 
 def buy(w: Watchlist, notional: float):
-    payload = {
-        "side": "buy",
-        "type": "market",
-        "time_in_force": "day",
-        "notional": notional,
-        "symbol": w.symbol
-    }
-    MONGO_CLIENT.log(f"buying stock {w.symbol}@{notional}", LogLevel.INFO, payload)
-    order = TRADING_CLIENT.create_order(payload)
-    if order.get("status", None) == "pending_new":
-        # sometimes the order doesn't process immediately
-        order = TRADING_CLIENT.get_order(order.get("id"))
+    try:
+        payload = {
+            "side": "buy",
+            "type": "market",
+            "time_in_force": "day",
+            "notional": notional,
+            "symbol": w.symbol
+        }
+        log(f"buying stock {w.symbol}@{notional}", LogLevel.INFO, payload)
+        order = TRADING_CLIENT.create_order(payload)
+        if order.get("status", None) == "pending_new":
+            # sometimes the order doesn't process immediately
+            order = TRADING_CLIENT.get_order(order.get("id"))
 
-    order_batch = create_order_batch(order)
-    write_order_batch(order_batch)
+        order_batch = create_order_batch(order)
+        write_order_batch(order_batch)
 
-    w.update_buy(SESSION_ID)
-    MONGO_CLIENT.update("watchlist", {"symbol": w.symbol}, w.to_mongo(), upsert=False)
+        w.update_buy(SESSION_ID)
+        MONGO_CLIENT.update("watchlist", {"symbol": w.symbol}, w.to_mongo(), upsert=False)
+    except Exception as e:
+        log(f"Error buying stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
 def sell(w: Watchlist, o: OrderBatch):
-    payload = {
-        "side": "sell",
-        "type": "market",
-        "time_in_force": "day",
-        "notional": o.notional,
-        "symbol": w.symbol
-    }
-    MONGO_CLIENT.log(f"selling stock {w.symbol}", LogLevel.INFO, payload)
-    order = TRADING_CLIENT.create_order(payload)
-    
-    o.sell_order_id = order.get("id", None)
-    o.sell_status = order.get("status", None)
-    o.sell_price = float(order.get("filled_avg_price", None))
-    o.sell_at_utc = datetime.now(UTC)
+    try:
+        payload = {
+            "side": "sell",
+            "type": "market",
+            "time_in_force": "day",
+            "notional": o.notional,
+            "symbol": w.symbol
+        }
+        MONGO_CLIENT.log(f"selling stock {w.symbol}", LogLevel.INFO, payload)
+        order = TRADING_CLIENT.create_order(payload)
+        if order.get("status", None) == "pending_new":
+            # sometimes the order doesn't process immediately
+            order = TRADING_CLIENT.get_order(order.get("id"))
 
-    w.update_sell(SESSION_ID)
+        o.sell_order_id = order.get("id", None)
+        o.sell_status = order.get("status", None)
+        o.sell_price = float(order.get("filled_avg_price", None))
+        o.sell_at_utc = datetime.now(UTC)
+
+        profit = (o.sell_price - o.buy_price)
+        
+        # TODO: update order
+        MONGO_CLIENT.update("order", {"_id": o._id}, o.to_mongo(), upsert=False)
+
+        w.update_sell(SESSION_ID, profit)
+    except Exception as e:
+        log(f"Error selling stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
 
 def write_order_batch(order_batch: OrderBatch) -> None:
@@ -173,7 +197,6 @@ def create_order_batch(order) -> OrderBatch:
     filled_avg_price = float(filled_avg_price) if filled_avg_price else None
     filled_qty = order.get("filled_qty", None)
     filled_qty = float(filled_qty) if filled_qty else None
-
 
     order_batch = OrderBatch(
         symbol = order.get("symbol", None),

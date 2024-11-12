@@ -57,12 +57,13 @@ class Watchlist(BaseModel):
         self.updated_at = datetime.now(UTC)
         self.updated_at_session = session_id
     
-    def update_sell(self, session_id: str):
+    def update_sell(self, session_id: str, profit: float = 0.0):
         self.last_sell_at = datetime.now(UTC)
         self.total_sell = (self.total_sell + 1)
         # TODO: add total profit calculation
         self.updated_at = datetime.now(UTC)
         self.updated_at_session = session_id
+        self.total_profit = self.total_profit + profit
 
 @dataclass
 class OrderBatch(BaseModel):
