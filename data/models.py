@@ -83,3 +83,6 @@ class OrderBatch(BaseModel):
     sell_price: float = 0
     sell_at_utc: datetime = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
     sell_session: str = None
+
+    def calculate_profit(self):
+        pass

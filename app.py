@@ -56,6 +56,7 @@ def main():
 
     for a in active_symbols:
         latest_bar = DATA_CLIENT.get_latest_bar(a.symbol)['bars']
+        latest_close = float(latest_bar[a.symbol]['c'])
         
         alpaca_orders = TRADING_CLIENT.get_orders(a.symbol)
         order_batch = [OrderBatch.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"symbol": a.symbol})]
@@ -81,9 +82,10 @@ def main():
             if STRICT_PDT:
                 # we need to skip the sell if we purchased the stock today
                 pdt = [order for order in order_batch if order.buy_at_utc.date() == datetime.now(UTC).date()]
-                if len(pdt) >= 0:
+                if len(pdt) > 0:
                     log(f"Stock {a.symbol} was purchased today {datetime.now(UTC).date()}, skipping sell.", LogLevel.INFO)
-                    break
+                    rebuy(order_batch, a, latest_close)
+                    continue
 
             for order in order_batch:
                 target_price = ((order.buy_price * TAKE_PROFIT) + order.buy_price)
@@ -92,17 +94,24 @@ def main():
                 if target_price <= latest_price:
                     sell(a, order)
 
-            if len(order_batch) < TOTAL_ALLOWED_BATCHES:
-                #   1. the previous buy has dropped by 2.5%
-                last_order = max(order_batch, key=lambda obj: obj.created_at)
-                if last_order.buy_price - (last_order.buy_price * .025) <= latest_bar[a.symbol]['c']:
-                    buy(a, BATCH_SIZE)
-                else:
-                    log(f"No entry point found for {a.symbol}", LogLevel.INFO)
+            rebuy(order_batch, a, latest_close)
 
     log("End", LogLevel.INFO)
 
+def rebuy(order_batch: OrderBatch, a: Watchlist, last_close: float):
+    if len(order_batch) < TOTAL_ALLOWED_BATCHES:
+        #   1. the previous buy has dropped by 2.5%
+        last_order = max(order_batch, key=lambda obj: obj.created_at)
+        if last_close <= last_order.buy_price - (last_order.buy_price * .025):
+            log(f"Rebuying stock {a.symbol}; last order {last_order.buy_price}; current price {last_close}", LogLevel.INFO)
+            buy(a, BATCH_SIZE)
+        else:
+            log(f"No entry point found for {a.symbol}", LogLevel.INFO)
+
 def log(message: str, log_level: str = "info", obj: dict = None):
+    print(f"{SESSION_ID} {log_level}: {message}")
+    if obj:
+        print(f"{SESSION_ID} {log_level}: {obj}")
     MONGO_CLIENT.log(message, SESSION_ID, log_level, obj)
 
 
@@ -181,7 +190,10 @@ def sell(w: Watchlist, o: OrderBatch):
 
         profit = (o.sell_price - o.buy_price)
         
-        # TODO: update order
+        # TODO: add sell session to order batch
+        # TODO: add profit to order batch
+        # TODO: add total profit to watchlist
+        # TODO: add total sell to watchlist
         MONGO_CLIENT.update("order", {"_id": o._id}, o.to_mongo(), upsert=False)
 
         w.update_sell(SESSION_ID, profit)
