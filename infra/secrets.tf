@@ -37,8 +37,8 @@ resource "google_secret_manager_secret_iam_member" "alpaca_data_url_base" {
 data "google_secret_manager_secret" "mongodb_uri" {
   secret_id = "CROWEMI_TRADES_MONGODB_URI"
 }
-resource "google_secret_manager_secret_iam_member" "alpaca_data_url_base" {
-  secret_id = data.google_secret_manager_secret.alpaca_data_url_base.secret_id
+resource "google_secret_manager_secret_iam_member" "mongodb_uri" {
+  secret_id = data.google_secret_manager_secret.mongodb_uri.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member     = "serviceAccount:${google_service_account.this.email}"
 }
