@@ -115,9 +115,9 @@ def rebuy(order_batch: OrderBatch, a: Watchlist, last_close: float):
             log(f"No entry point found for {a.symbol}", LogLevel.INFO)
 
 def log(message: str, log_level: str = "info", obj: dict = None):
-    print(f"{SESSION_ID} {log_level}: {message}")
+    print(f"crowemi-trades: {SESSION_ID} {log_level}: {message}")
     if obj:
-        print(f"{SESSION_ID} {log_level}: {obj}")
+        print(f"crowemi-trades: {SESSION_ID} {log_level}: {obj}")
     MONGO_CLIENT.log(message, SESSION_ID, log_level, obj)
 
 
