@@ -26,6 +26,23 @@ resource "google_cloud_run_v2_service" "this" {
   }
 }
 
+data "google_iam_policy" "private" {
+  binding {
+    role = "roles/run.invoker"
+    members = [
+      "serviceAccount:${data.google_service_account.this.email}",
+    ]
+  }
+}
+resource "google_cloud_run_service_iam_policy" "private" {
+  location = google_cloud_run_v2_service.this.location
+  project  = google_cloud_run_v2_service.this.project
+  service  = google_cloud_run_v2_service.this.name
+
+  policy_data = data.google_iam_policy.private.policy_data
+}
+
+
 resource "google_cloud_scheduler_job" "this" {
   name             = local.project
   region           = local.region

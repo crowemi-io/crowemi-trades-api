@@ -1,18 +1,8 @@
 from typing import Union
 
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI
 
-from app import main
-
-
-router = APIRouter(
-    prefix="/",
-)
-
-@router.post("/", tags=["email"])
-async def send_email():
-    print("Hello World")
-
+from routers import health
 
 app = FastAPI()
-app.include_router(router)
+app.include_router(health.router)
