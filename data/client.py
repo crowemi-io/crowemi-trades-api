@@ -5,6 +5,7 @@ class LogLevel:
     INFO = "info"
     ERROR = "error"
     WARNING = "warning"
+    DEBUG = "debug"
 
 class DataClient():
     def __init__(self, uri: str, database: str = None):

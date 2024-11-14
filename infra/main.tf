@@ -20,6 +20,52 @@ resource "google_cloud_run_v2_service" "this" {
   template {
     containers {
       image = "us-west1-docker.pkg.dev/${local.project}/crowemi-io/${local.service}:${var.docker_image_tag}"
+      env {
+        name  = "ALPACA_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret = data.google_secret_manager_secret.alpaca_api_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "ALPACA_API_SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret = data.google_secret_manager_secret.alpaca_api_secret_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "ALPACA_API_URL_BASE"
+        value_source {
+          secret_key_ref {
+            secret = data.google_secret_manager_secret.alpaca_url_base.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "ALPACA_DATA_API_URL_BASE"
+        value_source {
+          secret_key_ref {
+            secret = data.google_secret_manager_secret.alpaca_data_url_base.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "MONGODB_URI"
+        value_source {
+          secret_key_ref {
+            secret = data.google_secret_manager_secret.mongodb_uri.secret_id
+            version = "latest"
+          }
+        }
+      }
+      
     }
     vpc_access {
       network_interfaces {

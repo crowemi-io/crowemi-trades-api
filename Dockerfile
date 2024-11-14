@@ -20,5 +20,5 @@ RUN pip install -r requirements.txt
 EXPOSE 8080
 
 # ENTRYPOINT [ "sh" ]
-CMD ["fastapi", "run", "api/main.py", "--port", "8080"]
+CMD ["fastapi", "run", "api.py", "--port", "8080"]
 

@@ -12,10 +12,10 @@ from data.client import DataClient, LogLevel
 from data.models import Watchlist, OrderBatch
 
 
-API_KEY = os.getenv("API_KEY")
-API_SECRET_KEY = os.getenv("API_SECRET_KEY")
-API_URL_BASE = os.getenv("API_URL_BASE")
-DATA_API_URL_BASE = os.getenv("DATA_API_URL_BASE")
+API_KEY = os.getenv("ALPACA_API_KEY")
+API_SECRET_KEY = os.getenv("ALPACA_API_SECRET_KEY")
+API_URL_BASE = os.getenv("ALPACA_API_URL_BASE")
+DATA_API_URL_BASE = os.getenv("ALPACA_DATA_API_URL_BASE")
 
 TRADING_CLIENT = TradingClient(API_KEY, API_SECRET_KEY, API_URL_BASE)
 DATA_CLIENT = TradingDataClient(API_KEY, API_SECRET_KEY, DATA_API_URL_BASE)
@@ -44,6 +44,12 @@ DEFAULT_SYMBOLS = [
 
 def main():
     log("Start", LogLevel.INFO)
+    if DEBUG:
+        log(API_KEY, LogLevel.DEBUG)
+        log(API_SECRET_KEY, LogLevel.DEBUG)
+        log(API_URL_BASE, LogLevel.DEBUG)
+        log(DATA_API_URL_BASE, LogLevel.DEBUG)
+
     # is the market open?
     clock = TRADING_CLIENT.get_clock()
     if not clock['is_open']:
