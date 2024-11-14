@@ -8,14 +8,16 @@ locals {
 resource "google_cloud_run_v2_service" "this" {
   name     = local.service
   location = local.region
+  launch_stage = "BETA"
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   template {
     containers {
       image = "us-west1-docker.pkg.dev/${local.project}/crowemi-io/${local.service}:${var.docker_image_tag}"
     }
     vpc_access{
       network_interfaces {
-        network = "crowemi-io-network" # TODO: ref data
-        subnetwork = "crowemi-io-subnet-01" # TODO: ref data
+        network = "crowemi-io-network" 
+        subnetwork = "crowemi-io-subnet-01"
         tags = ["crowemi-io-api"]
       }
       egress = "ALL_TRAFFIC"

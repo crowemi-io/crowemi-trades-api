@@ -16,5 +16,8 @@ COPY app.py app.py
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-CMD ["echo 'Hello World'"]
-# CMD [ "python", "app.py" ]
+EXPOSE 8080
+
+# ENTRYPOINT [ "sh" ]
+CMD ["fastapi", "run", "api/main.py", "--port", "8080"]
+
