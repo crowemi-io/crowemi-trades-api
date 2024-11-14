@@ -40,7 +40,7 @@ DEFAULT_SYMBOLS = [
 ]
 
 
-def main():
+def main() -> bool:
     log("Start", LogLevel.INFO)
     if DEBUG:
         log(API_KEY, LogLevel.DEBUG)
@@ -54,7 +54,7 @@ def main():
         # if the market is closed, exit the application (unless debug is enabled)
         log(f"Market is closed.", LogLevel.WARNING, {"clock": clock})
         if not DEBUG:
-            exit(0)
+            return True
     
     active_symbols = [Watchlist.from_mongo(doc) for doc in MONGO_CLIENT.read("watchlist", {"is_active": True})]
 
@@ -101,6 +101,8 @@ def main():
             rebuy(order_batch, a, latest_close)
 
     log("End", LogLevel.INFO)
+    return True
+
 
 def rebuy(order_batch: OrderBatch, a: Watchlist, last_close: float):
     if len(order_batch) < TOTAL_ALLOWED_BATCHES:

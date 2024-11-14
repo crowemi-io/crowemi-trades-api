@@ -9,7 +9,10 @@ router = APIRouter()
 
 @router.post("/")
 def start():
-    main()
+    if main():
+        return {"Status": "Success"}
+    else:
+        return {"Status": "Failure"}
 
 
 app = FastAPI()
