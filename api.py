@@ -1,8 +1,9 @@
+import logging
 from fastapi import FastAPI, APIRouter
-
 from routers import health
-
 from app import main
+
+logging.basicConfig(level=logging.WARNING)
 
 
 router = APIRouter()
