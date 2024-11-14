@@ -1,6 +1,6 @@
 terraform {
   backend "remote" {
-    hostname = "app.terraform.io"
+    hostname     = "app.terraform.io"
     organization = "crowemi-io"
     workspaces {
       name = "crowemi-trades"
@@ -8,7 +8,7 @@ terraform {
   }
   required_providers {
     google = {
-      source = "hashicorp/google"
+      source  = "hashicorp/google"
       version = "5.20.0"
     }
   }

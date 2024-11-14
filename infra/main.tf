@@ -4,21 +4,28 @@ locals {
   project = var.google_project_id
 }
 
+resource "google_service_account" "this" {
+  account_id   = "srv-${local.service}"
+  display_name = "srv_crowemi_trades"
+  description  = "A service account for ${local.service}"
+}
+
 
 resource "google_cloud_run_v2_service" "this" {
-  name     = local.service
-  location = local.region
+  name         = local.service
+  project      = local.project
+  location     = local.region
   launch_stage = "BETA"
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  ingress      = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   template {
     containers {
       image = "us-west1-docker.pkg.dev/${local.project}/crowemi-io/${local.service}:${var.docker_image_tag}"
     }
-    vpc_access{
+    vpc_access {
       network_interfaces {
-        network = "crowemi-io-network" 
+        network    = "crowemi-io-network"
         subnetwork = "crowemi-io-subnet-01"
-        tags = ["crowemi-io-api"]
+        tags       = ["crowemi-io-api"]
       }
       egress = "ALL_TRAFFIC"
     }
@@ -30,7 +37,7 @@ data "google_iam_policy" "private" {
   binding {
     role = "roles/run.invoker"
     members = [
-      "serviceAccount:${data.google_service_account.this.email}",
+      "serviceAccount:${google_service_account.this.email}",
     ]
   }
 }
