@@ -3,8 +3,6 @@ import json
 import uuid
 from datetime import datetime, timedelta, UTC
 
-import polars as pl
-
 from common.helper import Helper
 from common.alpaca import TradingClient, TradingDataClient
 
