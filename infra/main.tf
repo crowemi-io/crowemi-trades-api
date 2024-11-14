@@ -25,7 +25,6 @@ resource "google_cloud_run_v2_service" "this" {
       network_interfaces {
         network    = "crowemi-io-network"
         subnetwork = "crowemi-io-subnet-01"
-        tags       = ["crowemi-io-api"]
       }
       egress = "ALL_TRAFFIC"
     }
