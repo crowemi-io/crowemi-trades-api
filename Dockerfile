@@ -12,7 +12,8 @@ COPY data/client.py data/client.py
 COPY data/models.py data/models.py
 COPY app.py app.py
 
-COPY api/ /app/api/
+COPY routers/ routers/
+COPY api.py api.py
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
