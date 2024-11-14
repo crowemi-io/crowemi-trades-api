@@ -67,6 +67,9 @@ resource "google_cloud_run_v2_service" "this" {
       }
       
     }
+    scaling {
+      max_instance_count = 1
+    }
     vpc_access {
       network_interfaces {
         network    = "crowemi-io-network"
