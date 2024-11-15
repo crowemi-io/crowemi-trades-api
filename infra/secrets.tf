@@ -42,3 +42,12 @@ resource "google_secret_manager_secret_iam_member" "mongodb_uri" {
   role      = "roles/secretmanager.secretAccessor"
   member     = "serviceAccount:${google_service_account.this.email}"
 }
+
+data "google_secret_manager_secret" "bot" {
+  secret_id = "CROWEMI_TRADES_BOT"
+}
+resource "google_secret_manager_secret_iam_member" "bot" {
+  secret_id = data.google_secret_manager_secret.bot.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member     = "serviceAccount:${google_service_account.this.email}"
+}

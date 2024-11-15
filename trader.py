@@ -13,6 +13,7 @@ API_KEY = os.getenv("ALPACA_API_KEY")
 API_SECRET_KEY = os.getenv("ALPACA_API_SECRET_KEY")
 API_URL_BASE = os.getenv("ALPACA_API_URL_BASE")
 DATA_API_URL_BASE = os.getenv("ALPACA_DATA_API_URL_BASE")
+BOT_ID = os.getenv("BOT_ID")
 
 TRADING_CLIENT = TradingClient(API_KEY, API_SECRET_KEY, API_URL_BASE)
 DATA_CLIENT = TradingDataClient(API_KEY, API_SECRET_KEY, DATA_API_URL_BASE)
@@ -171,7 +172,7 @@ def buy(w: Watchlist, notional: float):
 
         w.update_buy(SESSION_ID)
         MONGO_CLIENT.update("watchlist", {"symbol": w.symbol}, w.to_mongo(), upsert=False)
-        alert_channel(log_message)
+        alert_channel(log_message, BOT_ID)
 
     except Exception as e:
         log(f"Error buying stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
@@ -202,7 +203,7 @@ def sell(w: Watchlist, o: OrderBatch):
         MONGO_CLIENT.update("order", {"_id": o._id}, o.to_mongo(), upsert=False)
 
         w.update_sell(SESSION_ID, o.profit)
-        alert_channel(f"selling stock {w.symbol}; Profit {o.profit}")
+        alert_channel(f"selling stock {w.symbol}; Profit {o.profit}", BOT_ID)
     except Exception as e:
         log(f"Error selling stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
