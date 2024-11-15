@@ -1,10 +1,9 @@
 import os
-import json
 import uuid
 from datetime import datetime, timedelta, UTC
 
 from common.helper import Helper
-from common.alpaca import TradingClient, TradingDataClient
+from common.alpaca import TradingClient, TradingDataClient, alert_channel
 
 from data.client import DataClient, LogLevel
 from data.models import Watchlist, OrderBatch
@@ -160,6 +159,7 @@ def buy(w: Watchlist, notional: float):
             "notional": notional,
             "symbol": w.symbol
         }
+        log_message = f"buying stock {w.symbol}@{notional}"
         log(f"buying stock {w.symbol}@{notional}", LogLevel.INFO, payload)
         order = TRADING_CLIENT.create_order(payload)
         if order.get("status", None) == "pending_new":
@@ -171,6 +171,8 @@ def buy(w: Watchlist, notional: float):
 
         w.update_buy(SESSION_ID)
         MONGO_CLIENT.update("watchlist", {"symbol": w.symbol}, w.to_mongo(), upsert=False)
+        alert_channel(log_message)
+
     except Exception as e:
         log(f"Error buying stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
@@ -200,6 +202,7 @@ def sell(w: Watchlist, o: OrderBatch):
         MONGO_CLIENT.update("order", {"_id": o._id}, o.to_mongo(), upsert=False)
 
         w.update_sell(SESSION_ID, o.profit)
+        alert_channel(f"selling stock {w.symbol}; Profit {o.profit}")
     except Exception as e:
         log(f"Error selling stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
@@ -263,11 +266,12 @@ def process_bar(bars: dict, period: int) -> dict:
 
     return ret
 
-def recalculate_profit():
-    order_batch = [OrderBatch.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"sell_status": "filled"})]
-    for order in order_batch:
-        order.calculate_profit()
-        MONGO_CLIENT.update("order", {"_id": order._id}, order.to_mongo(), upsert=False)
+def calculate_profit() -> float:
+    profit = 0
+    records = [OrderBatch.from_mongo(record) for record in MONGO_CLIENT.read("order", {"sell_status": "filled"})]
+    for record in records:
+        profit += record.profit
+    return profit
 
 
 if __name__ == '__main__':

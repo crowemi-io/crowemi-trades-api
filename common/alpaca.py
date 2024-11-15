@@ -2,6 +2,12 @@ import json
 import requests
 
 
+def alert_channel(message: str, channel_id: str = "-1002416451737"):
+    uri = f"https://api.telegram.org/bot7327033442:AAHU3UUizRkH5jRoMpvb-lb6Lwm-moJf9ak/sendMessage?chat_id={channel_id}&text={message}"
+    ret = requests.get(uri)
+    return ret
+
+
 class Client:
     def __init__(self, api_key, api_secret_key, base_url):
         self.headers = {
