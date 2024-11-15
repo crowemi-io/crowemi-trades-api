@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, UTC
 from dataclasses import dataclass, asdict, fields
 
@@ -71,6 +72,7 @@ class OrderBatch(BaseModel):
     symbol: str = None
     quantity: float = None
     notional: float = None
+    profit: float = None
 
     buy_order_id: str = None
     buy_status: str = None
@@ -85,4 +87,4 @@ class OrderBatch(BaseModel):
     sell_session: str = None
 
     def calculate_profit(self):
-        pass
+        self.profit = round((self.sell_price - self.buy_price) * self.quantity, 2)

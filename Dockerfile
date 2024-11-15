@@ -10,7 +10,7 @@ COPY common/alpaca.py common/alpaca.py
 COPY common/helper.py common/helper.py
 COPY data/client.py data/client.py
 COPY data/models.py data/models.py
-COPY app.py app.py
+COPY trader.py trader.py
 
 COPY routers/ routers/
 COPY api.py api.py

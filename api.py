@@ -1,7 +1,8 @@
 import logging
 from fastapi import FastAPI, APIRouter
-from routers import health
-from app import main
+from routers import health, order_batch
+
+from trader import trade
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -9,8 +10,8 @@ logging.basicConfig(level=logging.WARNING)
 router = APIRouter()
 
 @router.post("/")
-def start():
-    if main():
+def cron():
+    if trade():
         return {"Status": "Success"}
     else:
         return {"Status": "Failure"}
@@ -18,4 +19,5 @@ def start():
 
 app = FastAPI()
 app.include_router(health.router)
+app.include_router(order_batch.router)
 app.include_router(router)

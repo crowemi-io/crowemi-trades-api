@@ -40,7 +40,7 @@ DEFAULT_SYMBOLS = [
 ]
 
 
-def main() -> bool:
+def trade() -> bool:
     log("Start", LogLevel.INFO)
     if DEBUG:
         log(API_KEY, LogLevel.DEBUG)
@@ -193,16 +193,13 @@ def sell(w: Watchlist, o: OrderBatch):
         o.sell_status = order.get("status", None)
         o.sell_price = float(order.get("filled_avg_price", None))
         o.sell_at_utc = datetime.now(UTC)
+        o.sell_session = SESSION_ID
 
-        profit = (o.sell_price - o.buy_price)
+        o.calculate_profit()
         
-        # TODO: add sell session to order batch
-        # TODO: add profit to order batch
-        # TODO: add total profit to watchlist
-        # TODO: add total sell to watchlist
         MONGO_CLIENT.update("order", {"_id": o._id}, o.to_mongo(), upsert=False)
 
-        w.update_sell(SESSION_ID, profit)
+        w.update_sell(SESSION_ID, o.profit)
     except Exception as e:
         log(f"Error selling stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
@@ -266,6 +263,12 @@ def process_bar(bars: dict, period: int) -> dict:
 
     return ret
 
+def recalculate_profit():
+    order_batch = [OrderBatch.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"sell_status": "filled"})]
+    for order in order_batch:
+        order.calculate_profit()
+        MONGO_CLIENT.update("order", {"_id": order._id}, order.to_mongo(), upsert=False)
+
 
 if __name__ == '__main__':
-    main()
+    trade()
