@@ -35,7 +35,6 @@ DEFAULT_SYMBOLS = [
     "META",
     "TSLA",
     "AMZN",
-    "MSFT",
     "NVDA"
 ]
 

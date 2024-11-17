@@ -3,7 +3,7 @@ import requests
 
 
 def alert_channel(message: str, bot: str, channel_id: str = "-1002416451737"):
-    uri = f"https://api.telegram.org/{bot}/sendMessage?chat_id={channel_id}&text={message}"
+    uri = f"https://api.telegram.org/bot{bot}/sendMessage?chat_id={channel_id}&text={message}"
     ret = requests.get(uri)
     return ret
 

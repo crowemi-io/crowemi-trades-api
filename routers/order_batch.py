@@ -10,15 +10,16 @@ router = APIRouter(
     tags=["order_batch"]
 )
 
+@router.get("/{order_id}", tags=["order_batch"])
+async def get_order(order_id: str):
+    return True
+
 @router.get("/", tags=["order_batch"])
 async def get_orders():
     return True
 
-async def get_order():
-    return True
-
-@router.patch("/profit/", tags=["order_batch"])
-async def update(id: str):
+@router.patch("/profit/{order_id}", tags=["order_batch"])
+async def update(order_id: str):
     pass 
 
 @router.get("/profit/", tags=["order_batch"])
