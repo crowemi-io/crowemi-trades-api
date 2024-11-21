@@ -3,7 +3,7 @@ terraform {
     hostname     = "app.terraform.io"
     organization = "crowemi-io"
     workspaces {
-      name = "crowemi-trades"
+      name = "${var.service_account}-${var.env}"
     }
   }
   required_providers {
