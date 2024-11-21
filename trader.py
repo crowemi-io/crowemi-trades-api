@@ -8,18 +8,19 @@ from common.alpaca import TradingClient, TradingDataClient, alert_channel
 from data.client import DataClient, LogLevel
 from data.models import Watchlist, OrderBatch
 
+CONFIG = os.getenv("CONFIG", Helper.read_local_config())
 
-API_KEY = os.getenv("ALPACA_API_KEY")
-API_SECRET_KEY = os.getenv("ALPACA_API_SECRET_KEY")
-API_URL_BASE = os.getenv("ALPACA_API_URL_BASE")
-DATA_API_URL_BASE = os.getenv("ALPACA_DATA_API_URL_BASE")
-BOT_ID = os.getenv("BOT_ID")
+API_KEY = CONFIG.get("api_key", None)
+API_SECRET_KEY = CONFIG.get("api_secret_key", None)
+API_URL_BASE = CONFIG.get("api_url_base", None)
+DATA_API_URL_BASE = CONFIG.get("data_api_url_base", None)
+BOT_ID = CONFIG.get("bot_id", None)
 
 TRADING_CLIENT = TradingClient(API_KEY, API_SECRET_KEY, API_URL_BASE)
 DATA_CLIENT = TradingDataClient(API_KEY, API_SECRET_KEY, DATA_API_URL_BASE)
-MONGO_CLIENT = DataClient(os.getenv("MONGODB_URI"))
+MONGO_CLIENT = DataClient(CONFIG.get("uri", None))
 
-DEBUG = os.getenv("DEBUG", False)
+DEBUG = CONFIG.get("debug", False)
 SESSION_ID = uuid.uuid4().hex
 
 TOTAL_ALLOWED_BATCHES = 5

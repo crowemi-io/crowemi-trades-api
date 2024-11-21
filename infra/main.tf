@@ -2,12 +2,13 @@ locals {
   region  = var.google_region
   service = var.service_name
   project = var.google_project_id
+  env = lower(var.env)
 }
 
 resource "google_service_account" "this" {
-  account_id   = "srv-${local.service}"
+  account_id   = "srv-${local.service}-${local.env}"
   display_name = "srv_crowemi_trades"
-  description  = "A service account for ${local.service}"
+  description  = "A service account for ${local.service} ${local.env}"
 }
 
 
@@ -21,60 +22,14 @@ resource "google_cloud_run_v2_service" "this" {
     containers {
       image = "us-west1-docker.pkg.dev/${local.project}/crowemi-io/${local.service}:${var.docker_image_tag}"
       env {
-        name  = "ALPACA_API_KEY"
+        name  = "CONFIG"
         value_source {
           secret_key_ref {
-            secret = data.google_secret_manager_secret.alpaca_api_key.secret_id
+            secret = data.google_secret_manager_secret.this.secret_id
             version = "latest"
           }
         }
       }
-      env {
-        name  = "ALPACA_API_SECRET_KEY"
-        value_source {
-          secret_key_ref {
-            secret = data.google_secret_manager_secret.alpaca_api_secret_key.secret_id
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name  = "ALPACA_API_URL_BASE"
-        value_source {
-          secret_key_ref {
-            secret = data.google_secret_manager_secret.alpaca_url_base.secret_id
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name  = "ALPACA_DATA_API_URL_BASE"
-        value_source {
-          secret_key_ref {
-            secret = data.google_secret_manager_secret.alpaca_data_url_base.secret_id
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name  = "MONGODB_URI"
-        value_source {
-          secret_key_ref {
-            secret = data.google_secret_manager_secret.mongodb_uri.secret_id
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name  = "BOT_ID"
-        value_source {
-          secret_key_ref {
-            secret = data.google_secret_manager_secret.bot.secret_id
-            version = "latest"
-          }
-        }
-      }
-      
     }
     scaling {
       max_instance_count = 1
@@ -108,7 +63,7 @@ resource "google_cloud_run_service_iam_policy" "private" {
 
 
 resource "google_cloud_scheduler_job" "this" {
-  name             = local.project
+  name             = local.service
   region           = local.region
   schedule         = "*/30 * * * *"
   time_zone        = "America/New_York"

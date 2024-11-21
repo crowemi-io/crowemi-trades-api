@@ -21,3 +21,7 @@ variable "service_name" {
   description = "The service name"
   type        = string
 }
+variable "env" {
+  description = "The env name"
+  type        = string
+}

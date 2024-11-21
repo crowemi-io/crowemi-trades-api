@@ -1,8 +1,8 @@
-name: Build and Push Docker Image
+name: Deploy Paper
 
 on:
   push:
-    branches:
+    branches-ignore:
       - main
 
 env:
@@ -17,7 +17,7 @@ env:
   TF_CLOUD_ORGANIZATION: "crowemi-io"
   TF_API_TOKEN: "${{ secrets.TF_TOKEN }}"
   TF_WORKSPACE: "${{ secrets.TF_WORKSPACE }}"
-  TF_SERVICE_NAME: ${{ secrets.TF_SERVICE_NAME }}
+  TF_SERVICE_NAME: "${{ secrets.TF_SERVICE_NAME }}-paper"
   TF_REGION: ${{ secrets.GCP_REGION }}
   CONFIG_DIRECTORY: "./"
 
@@ -50,8 +50,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TF_VAR_docker_image_tag: "\"${{ github.sha }}\""
-      TF_VAR_service_name: "\"${{ secrets.TF_SERVICE_NAME }}\""
+      TF_VAR_service_name: "\"${{ secrets.TF_SERVICE_NAME }}-paper\""
       TF_VAR_google_region: "\"${{ secrets.GCP_REGION }}\""
+      TF_VAR_env: "paper"
     permissions:
       contents: read
     steps:
