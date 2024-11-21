@@ -11,7 +11,7 @@ env:
   REGON: ${{ secrets.GCP_REGION }}
   GH_USERNAME: ${{ secrets.GH_USERNAME }}
   GH_PAT: ${{ secrets.GH_PAT }}
-  IMAGE_NAME: "crowemi-trades"
+  IMAGE_NAME: "crowemi-trades-api"
   ARTIFACT_REGISTRY: "us-west1-docker.pkg.dev"
   REGISTRY_NAME: "crowemi-io"
   TF_CLOUD_ORGANIZATION: "crowemi-io"
