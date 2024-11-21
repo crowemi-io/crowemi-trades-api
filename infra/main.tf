@@ -13,7 +13,7 @@ resource "google_service_account" "this" {
 
 
 resource "google_cloud_run_v2_service" "this" {
-  name         = local.service
+  name         = "${local.service}-${local.env}"
   project      = local.project
   location     = local.region
   launch_stage = "BETA"
@@ -63,7 +63,7 @@ resource "google_cloud_run_service_iam_policy" "private" {
 
 
 resource "google_cloud_scheduler_job" "this" {
-  name             = local.service
+  name             = "${local.service}-${local.env}"
   region           = local.region
   schedule         = "*/30 * * * *"
   time_zone        = "America/New_York"
