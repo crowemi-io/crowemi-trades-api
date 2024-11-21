@@ -7,7 +7,7 @@ locals {
 
 resource "google_service_account" "this" {
   account_id   = "srv-${local.service}-${local.env}"
-  display_name = "srv_${local.service}_${local.env}"
+  display_name = "srv_${replace(local.service, "-", "_")}_${local.env}"
   description  = "A service account for ${local.service} ${local.env}"
 }
 
@@ -22,10 +22,10 @@ resource "google_cloud_run_v2_service" "this" {
     containers {
       image = "us-west1-docker.pkg.dev/${local.project}/crowemi-io/${local.service}:${var.docker_image_tag}"
       env {
-        name  = "CONFIG"
+        name = "CONFIG"
         value_source {
           secret_key_ref {
-            secret = data.google_secret_manager_secret.this.secret_id
+            secret  = data.google_secret_manager_secret.this.secret_id
             version = "latest"
           }
         }
@@ -65,6 +65,7 @@ resource "google_cloud_run_service_iam_policy" "private" {
 resource "google_cloud_scheduler_job" "this" {
   name             = "${local.service}-${local.env}"
   region           = local.region
+  project          = local.project
   schedule         = "*/30 * * * *"
   time_zone        = "America/New_York"
   attempt_deadline = "320s"
