@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from datetime import datetime, timedelta, UTC
@@ -8,7 +9,7 @@ from common.alpaca import TradingClient, TradingDataClient, alert_channel
 from data.client import DataClient, LogLevel
 from data.models import Watchlist, OrderBatch
 
-CONFIG = os.getenv("CONFIG", Helper.read_local_config())
+CONFIG = json.loads(os.getenv("CONFIG", None))
 
 API_KEY = CONFIG.get("api_key", None)
 API_SECRET_KEY = CONFIG.get("api_secret_key", None)
