@@ -9,7 +9,7 @@ from common.alpaca import TradingClient, TradingDataClient, alert_channel
 from data.client import DataClient, LogLevel
 from data.models import Watchlist, OrderBatch
 
-CONFIG = json.loads(os.getenv("CONFIG", None))
+CONFIG = Helper.convert_config(os.getenv("CONFIG", None))
 
 API_KEY = CONFIG.get("api_key", None)
 API_SECRET_KEY = CONFIG.get("api_secret_key", None)

@@ -1,3 +1,4 @@
+import base64
 import json
 
 class Helper():
@@ -6,10 +7,10 @@ class Helper():
         return ((new_value - old_value) / old_value) * 100
     
     @staticmethod
-    def read_local_config() -> dict | None:
+    def convert_config(b64: str) -> dict | None:
         try:
-            with open('.secret/config-paper.json') as f:
-                return json.load(f)
+            config = base64.b64decode(b64).decode("utf-8")
+            return json.loads(config)
         except Exception as e:
             print(f"Error reading config file: {e}")
             return None

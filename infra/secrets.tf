@@ -1,5 +1,5 @@
 data "google_secret_manager_secret" "this" {
-  secret_id = "CROWEMI_TRADES_${upper(local.env)}"
+  secret_id = "CROWEMI_TRADES_API_${upper(local.env)}"
 }
 resource "google_secret_manager_secret_iam_member" "this" {
   secret_id = data.google_secret_manager_secret.this.secret_id
