@@ -7,7 +7,7 @@ locals {
 
 resource "google_service_account" "this" {
   account_id   = "srv-${local.service}-${local.env}"
-  display_name = "srv_crowemi_trades"
+  display_name = "srv_${local.service}_${local.env}"
   description  = "A service account for ${local.service} ${local.env}"
 }
 
