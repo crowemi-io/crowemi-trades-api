@@ -11,7 +11,6 @@ variable "google_region" {
   type        = string
   default     = "us-west-2"
 }
-
 variable "docker_image_tag" {
   description = "The docker image tage to deploy"
   type        = string

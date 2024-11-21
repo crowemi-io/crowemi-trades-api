@@ -52,7 +52,7 @@ jobs:
       TF_VAR_docker_image_tag: "\"${{ github.sha }}\""
       TF_VAR_service_name: "\"${{ secrets.TF_SERVICE_NAME }}\""
       TF_VAR_google_region: "\"${{ secrets.GCP_REGION }}\""
-      TF_VAR_env: "paper"
+      TF_VAR_env: "\"paper\""
     permissions:
       contents: read
     steps:
