@@ -1,9 +1,8 @@
-resource "mongodbatlas_cluster" "this" {
-  project_id              = var.atlas_project_id
-  name                    = "${local.service}-${local.env}"
+resource "mongodbatlas_serverless_instance" "this" {
+  project_id   = var.atlas_project_id
+  name         = "${local.service}-${local.env}"
 
-  provider_name = "TENANT"
-  backing_provider_name = "GCP"
-  provider_region_name = "US_CENTRAL_1"
-  provider_instance_size_name = "M0"
+  provider_settings_backing_provider_name = "GCP"
+  provider_settings_provider_name = "SERVERLESS"
+  provider_settings_region_name = "US_CENTRAL_1"
 }
