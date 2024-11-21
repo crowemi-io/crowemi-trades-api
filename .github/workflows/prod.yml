@@ -41,7 +41,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} --build-arg="GH_USERNAME=${{ env.GH_USERNAME }}" --build-arg="GH_PAT=${{ env.GH_PAT }}" .
+          docker build -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -t prod --build-arg="GH_USERNAME=${{ env.GH_USERNAME }}" --build-arg="GH_PAT=${{ env.GH_PAT }}" .
           docker push  ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   terraform:

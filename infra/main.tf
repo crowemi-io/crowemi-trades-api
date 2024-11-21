@@ -2,7 +2,7 @@ locals {
   region  = var.google_region
   service = var.service_name
   project = var.google_project_id
-  env = lower(var.env)
+  env     = lower(var.env)
 }
 
 resource "google_service_account" "this" {
