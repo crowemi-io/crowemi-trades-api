@@ -17,7 +17,7 @@ env:
   TF_CLOUD_ORGANIZATION: "crowemi-io"
   TF_API_TOKEN: "${{ secrets.TF_TOKEN }}"
   TF_WORKSPACE: "${{ secrets.TF_WORKSPACE }}"
-  TF_SERVICE_NAME: "${{ secrets.TF_SERVICE_NAME }}"
+  TF_SERVICE_NAME: ${{ secrets.TF_SERVICE_NAME }}
   TF_REGION: ${{ secrets.GCP_REGION }}
   CONFIG_DIRECTORY: "./"
 
