@@ -4,5 +4,5 @@ resource "mongodbatlas_serverless_instance" "this" {
 
   provider_settings_backing_provider_name = "GCP"
   provider_settings_provider_name = "SERVERLESS"
-  provider_settings_region_name = "us-central1"
+  provider_settings_region_name = "us-east1"
 }
