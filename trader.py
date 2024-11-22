@@ -34,7 +34,6 @@ OVERRIDE_ENTRY = True
 DEFAULT_SYMBOLS = [
     "AAPL",
     "GOOG",
-    "META",
     "TSLA",
     "AMZN",
     "NVDA"
