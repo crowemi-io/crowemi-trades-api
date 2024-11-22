@@ -1,7 +1,7 @@
 resource "google_firestore_database" "this" {
   project     = var.google_project_id
   name        = "${local.service}-${local.env}"
-  location_id = "us-west1"
+  location_id = var.google_region
   type        = "FIRESTORE_NATIVE"
 }
 
