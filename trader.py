@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from datetime import datetime, timedelta, UTC
@@ -8,22 +9,23 @@ from common.alpaca import TradingClient, TradingDataClient, alert_channel
 from data.client import DataClient, LogLevel
 from data.models import Watchlist, OrderBatch
 
+CONFIG = Helper.convert_config(os.getenv("CONFIG", None))
 
-API_KEY = os.getenv("ALPACA_API_KEY")
-API_SECRET_KEY = os.getenv("ALPACA_API_SECRET_KEY")
-API_URL_BASE = os.getenv("ALPACA_API_URL_BASE")
-DATA_API_URL_BASE = os.getenv("ALPACA_DATA_API_URL_BASE")
-BOT_ID = os.getenv("BOT_ID")
+API_KEY = CONFIG.get("api_key", None)
+API_SECRET_KEY = CONFIG.get("api_secret_key", None)
+API_URL_BASE = CONFIG.get("api_url_base", None)
+DATA_API_URL_BASE = CONFIG.get("data_api_url_base", None)
+BOT_ID = CONFIG.get("bot_id", None)
 
 TRADING_CLIENT = TradingClient(API_KEY, API_SECRET_KEY, API_URL_BASE)
 DATA_CLIENT = TradingDataClient(API_KEY, API_SECRET_KEY, DATA_API_URL_BASE)
-MONGO_CLIENT = DataClient(os.getenv("MONGODB_URI"))
+MONGO_CLIENT = DataClient(CONFIG.get("uri", None))
 
-DEBUG = os.getenv("DEBUG", False)
+DEBUG = CONFIG.get("debug", False)
 SESSION_ID = uuid.uuid4().hex
 
 TOTAL_ALLOWED_BATCHES = 5
-BATCH_SIZE = 10
+BATCH_SIZE = 20
 TAKE_PROFIT = .0025 # .25 percent increase
 STRICT_PDT = True
 OVERRIDE_ENTRY = True
@@ -32,7 +34,6 @@ OVERRIDE_ENTRY = True
 DEFAULT_SYMBOLS = [
     "AAPL",
     "GOOG",
-    "META",
     "TSLA",
     "AMZN",
     "NVDA"
@@ -182,7 +183,7 @@ def sell(w: Watchlist, o: OrderBatch):
             "side": "sell",
             "type": "market",
             "time_in_force": "day",
-            "notional": o.notional,
+            "qty": o.quantity,
             "symbol": w.symbol
         }
         MONGO_CLIENT.log(f"selling stock {w.symbol}", LogLevel.INFO, payload)
@@ -266,12 +267,14 @@ def process_bar(bars: dict, period: int) -> dict:
 
     return ret
 
-def calculate_profit() -> float:
-    profit = 0
+def calculate_profit() -> dict:
+    ret = dict()
     records = [OrderBatch.from_mongo(record) for record in MONGO_CLIENT.read("order", {"sell_status": "filled"})]
     for record in records:
-        profit += record.profit
-    return profit
+        if record.symbol not in ret:
+            ret[f'{record.symbol}'] = 0
+        ret[f'{record.symbol}'] += record.profit
+    return ret
 
 
 if __name__ == '__main__':
