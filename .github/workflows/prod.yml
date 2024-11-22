@@ -11,12 +11,12 @@ env:
   REGON: ${{ secrets.GCP_REGION }}
   GH_USERNAME: ${{ secrets.GH_USERNAME }}
   GH_PAT: ${{ secrets.GH_PAT }}
-  IMAGE_NAME: "crowemi-trades"
+  IMAGE_NAME: "crowemi-trades-api"
   ARTIFACT_REGISTRY: "us-west1-docker.pkg.dev"
   REGISTRY_NAME: "crowemi-io"
   TF_CLOUD_ORGANIZATION: "crowemi-io"
   TF_API_TOKEN: "${{ secrets.TF_TOKEN }}"
-  TF_WORKSPACE: "${{ secrets.TF_WORKSPACE }}"
+  TF_WORKSPACE: "crowemi-trades-api"
   TF_SERVICE_NAME: ${{ secrets.TF_SERVICE_NAME }}
   TF_REGION: ${{ secrets.GCP_REGION }}
   CONFIG_DIRECTORY: "./"
@@ -52,7 +52,7 @@ jobs:
       TF_VAR_docker_image_tag: "\"${{ github.sha }}\""
       TF_VAR_service_name: "\"${{ secrets.TF_SERVICE_NAME }}\""
       TF_VAR_google_region: "\"${{ secrets.GCP_REGION }}\""
-      TF_VAR_env: "prod"
+      TF_VAR_env: "\"prod\""
     permissions:
       contents: read
     steps:
