@@ -1,19 +1,21 @@
 locals {
-  region  = var.google_region
-  service = var.service_name
-  project = var.google_project_id
-  env     = lower(var.env)
+  region       = var.google_region
+  service      = var.service_name
+  project      = var.google_project_id
+  env          = lower(var.env)
+  display_name = local.env == "paper" ? "srv_${replace(local.service, "-", "_")}_${local.env}" : "srv_${replace(local.service, "-", "_")}"
+  name         = local.env == "paper" ? "${local.service}-${local.env}" : local.service
 }
 
 resource "google_service_account" "this" {
   account_id   = "srv-${local.service}-${local.env}"
-  display_name = "srv_${replace(local.service, "-", "_")}_${local.env}"
+  display_name = local.display_name
   description  = "A service account for ${local.service} ${local.env}"
 }
 
 
 resource "google_cloud_run_v2_service" "this" {
-  name         = "${local.service}-${local.env}"
+  name         = local.name
   project      = local.project
   location     = local.region
   launch_stage = "BETA"
@@ -63,7 +65,7 @@ resource "google_cloud_run_service_iam_policy" "private" {
 
 
 resource "google_cloud_scheduler_job" "this" {
-  name             = "${local.service}-${local.env}"
+  name             = local.name
   region           = local.region
   project          = local.project
   schedule         = "*/30 * * * *"
