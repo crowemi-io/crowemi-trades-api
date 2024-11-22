@@ -25,7 +25,7 @@ DEBUG = CONFIG.get("debug", False)
 SESSION_ID = uuid.uuid4().hex
 
 TOTAL_ALLOWED_BATCHES = 5
-BATCH_SIZE = 10
+BATCH_SIZE = 20
 TAKE_PROFIT = .0025 # .25 percent increase
 STRICT_PDT = True
 OVERRIDE_ENTRY = True
@@ -184,7 +184,7 @@ def sell(w: Watchlist, o: OrderBatch):
             "side": "sell",
             "type": "market",
             "time_in_force": "day",
-            "notional": o.notional,
+            "qty": o.quantity,
             "symbol": w.symbol
         }
         MONGO_CLIENT.log(f"selling stock {w.symbol}", LogLevel.INFO, payload)
@@ -268,12 +268,14 @@ def process_bar(bars: dict, period: int) -> dict:
 
     return ret
 
-def calculate_profit() -> float:
-    profit = 0
+def calculate_profit() -> dict:
+    ret = dict()
     records = [OrderBatch.from_mongo(record) for record in MONGO_CLIENT.read("order", {"sell_status": "filled"})]
     for record in records:
-        profit += record.profit
-    return profit
+        if record.symbol not in ret:
+            ret[f'{record.symbol}'] = 0
+        ret[f'{record.symbol}'] += record.profit
+    return ret
 
 
 if __name__ == '__main__':
