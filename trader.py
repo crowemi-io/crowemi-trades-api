@@ -16,6 +16,7 @@ API_SECRET_KEY = CONFIG.get("api_secret_key", None)
 API_URL_BASE = CONFIG.get("api_url_base", None)
 DATA_API_URL_BASE = CONFIG.get("data_api_url_base", None)
 BOT_ID = CONFIG.get("bot_id", None)
+BOT_CHANNEL = CONFIG.get("bot_channel", None)
 
 TRADING_CLIENT = TradingClient(API_KEY, API_SECRET_KEY, API_URL_BASE)
 DATA_CLIENT = TradingDataClient(API_KEY, API_SECRET_KEY, DATA_API_URL_BASE)
@@ -172,7 +173,7 @@ def buy(w: Watchlist, notional: float):
 
         w.update_buy(SESSION_ID)
         MONGO_CLIENT.update("watchlist", {"symbol": w.symbol}, w.to_mongo(), upsert=False)
-        alert_channel(log_message, BOT_ID)
+        alert_channel(log_message, BOT_ID, BOT_CHANNEL)
 
     except Exception as e:
         log(f"Error buying stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
@@ -203,7 +204,7 @@ def sell(w: Watchlist, o: OrderBatch):
         MONGO_CLIENT.update("order", {"_id": o._id}, o.to_mongo(), upsert=False)
 
         w.update_sell(SESSION_ID, o.profit)
-        alert_channel(f"selling stock {w.symbol}; Profit {o.profit}", BOT_ID)
+        alert_channel(f"selling stock {w.symbol}; Profit {o.profit}", BOT_ID, BOT_CHANNEL)
     except Exception as e:
         log(f"Error selling stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
