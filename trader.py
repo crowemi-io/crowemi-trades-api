@@ -7,7 +7,7 @@ from common.helper import Helper
 from common.alpaca import TradingClient, TradingDataClient, alert_channel
 
 from data.client import DataClient, LogLevel
-from data.models import Watchlist, OrderBatch
+from data.models import Watchlist, Order
 
 CONFIG = Helper.convert_config(os.getenv("CONFIG", None))
 
@@ -64,7 +64,7 @@ def trade() -> bool:
         latest_close = float(latest_bar[a.symbol]['c'])
         
         alpaca_orders = TRADING_CLIENT.get_orders(a.symbol)
-        order_batch = [OrderBatch.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"symbol": a.symbol})]
+        order_batch = [Order.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"symbol": a.symbol})]
         
         missing_orders = [order for order in alpaca_orders if order.get("id") not in [o.buy_order_id for o in order_batch]]
         if missing_orders:
@@ -72,7 +72,7 @@ def trade() -> bool:
             [write_order_batch(create_order_batch(order)) for order in missing_orders]
 
         # after updating orders, get those orders that have been filled
-        order_batch = [OrderBatch.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"symbol": a.symbol, "buy_status": "filled", "sell_status": None})]
+        order_batch = [Order.from_mongo(doc) for doc in MONGO_CLIENT.read("order", {"symbol": a.symbol, "buy_status": "filled", "sell_status": None})]
 
         # no open orders
         if not order_batch:
@@ -105,7 +105,7 @@ def trade() -> bool:
     return True
 
 
-def rebuy(order_batch: OrderBatch, a: Watchlist, last_close: float):
+def rebuy(order_batch: Order, a: Watchlist, last_close: float):
     if len(order_batch) < TOTAL_ALLOWED_BATCHES:
         #   1. the previous buy has dropped by 2.5%
         last_order = max(order_batch, key=lambda obj: obj.created_at)
@@ -178,7 +178,7 @@ def buy(w: Watchlist, notional: float):
     except Exception as e:
         log(f"Error buying stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
-def sell(w: Watchlist, o: OrderBatch):
+def sell(w: Watchlist, o: Order):
     try:
         payload = {
             "side": "sell",
@@ -209,16 +209,16 @@ def sell(w: Watchlist, o: OrderBatch):
         log(f"Error selling stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
 
-def write_order_batch(order_batch: OrderBatch) -> None:
+def write_order_batch(order_batch: Order) -> None:
     MONGO_CLIENT.write("order", order_batch.to_mongo())
 
-def create_order_batch(order) -> OrderBatch:
+def create_order_batch(order) -> Order:
     filled_avg_price = order.get("filled_avg_price", None)
     filled_avg_price = float(filled_avg_price) if filled_avg_price else None
     filled_qty = order.get("filled_qty", None)
     filled_qty = float(filled_qty) if filled_qty else None
 
-    order_batch = OrderBatch(
+    order_batch = Order(
         symbol = order.get("symbol", None),
         quantity = filled_qty,
         notional = order.get("notional", None),
@@ -270,11 +270,34 @@ def process_bar(bars: dict, period: int) -> dict:
 
 def calculate_profit() -> dict:
     ret = dict()
-    records = [OrderBatch.from_mongo(record) for record in MONGO_CLIENT.read("order", {"sell_status": "filled"})]
+    records = [Order.from_mongo(record) for record in MONGO_CLIENT.read("order", {"sell_status": "filled"})]
+    
+    today = 0.0
+    last_30 = 0.0
+    last_60 = 0.0
+    all_time = 0.0
+    symbols = dict()
+
     for record in records:
+        if record.sell_at_utc.date() == datetime.now(UTC).date():
+            today += record.profit
+        if record.sell_at_utc.date() <= datetime.now(UTC).date() + timedelta(days=30):
+            last_30 += record.profit
+        if record.sell_at_utc.date() <= datetime.now(UTC).date() + timedelta(days=60):
+            last_60 += record.profit
+        
+        all_time += record.profit
+        
         if record.symbol not in ret:
-            ret[f'{record.symbol}'] = 0
-        ret[f'{record.symbol}'] += record.profit
+            symbols[f'{record.symbol}'] = 0
+        symbols[f'{record.symbol}'] += record.profit
+    
+    ret["today"] = today
+    ret["last_30"] = last_30
+    ret["last_60"] = last_60
+    ret["all_time"] = all_time
+    ret["symbols"] = symbols
+
     return ret
 
 

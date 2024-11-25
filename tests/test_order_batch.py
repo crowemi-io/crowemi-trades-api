@@ -1,17 +1,17 @@
 import unittest
-from data.models import OrderBatch
+from data.models import Order
 
-class TestOrderBatch(unittest.TestCase):
+class TestOrder(unittest.TestCase):
 
     def setUp(self):
-        self.order_batch = OrderBatch().get()
+        self.order_batch = Order().get()
 
     def test_get(self):
-        order = OrderBatch.get()
+        order = Order.get()
         self.assertEqual(order, None)
         
     def test_calculate_profit(self):
-        order = OrderBatch(
+        order = Order(
             quantity=0.04460542,
             buy_price=224.188,
             sell_price=225.184

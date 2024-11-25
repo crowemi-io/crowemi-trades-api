@@ -1,7 +1,7 @@
 import uvicorn
 import logging
 from fastapi import FastAPI, APIRouter
-from routers import health, order_batch
+from routers import health, order
 
 from trader import trade
 
@@ -20,7 +20,7 @@ def cron():
 
 app = FastAPI()
 app.include_router(health.router)
-app.include_router(order_batch.router)
+app.include_router(order.router)
 app.include_router(router)
 
 
