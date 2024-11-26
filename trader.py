@@ -169,7 +169,9 @@ class Trader():
 
             o.sell_order_id = order.get("id", None)
             o.sell_status = order.get("status", None)
-            o.sell_price = float(order.get("filled_avg_price", None))
+            filled_avg_price = order.get("filled_avg_price", 0)
+            if filled_avg_price:
+                o.sell_price = float(filled_avg_price)
             o.sell_at_utc = datetime.now(UTC)
             o.sell_session = self.SESSION_ID
 

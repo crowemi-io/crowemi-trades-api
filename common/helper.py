@@ -56,7 +56,6 @@ class Helper():
     @staticmethod
     def calculate_profit(records: dict) -> dict:
         ret = dict()
-        # records = [Order.from_mongo(record) for record in MONGO_CLIENT.read("order", {"sell_status": "filled"})]
         
         today = 0.0
         last_30 = 0.0

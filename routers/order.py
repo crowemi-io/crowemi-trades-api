@@ -3,8 +3,10 @@ import json
 from fastapi import APIRouter
 
 from data.models import Order
-from trader import MONGO_CLIENT, calculate_profit
+from trader import Trader
+from common.helper import Helper
 
+TRADER = Trader()
 
 router = APIRouter(
     prefix="/v1/order",
@@ -25,12 +27,13 @@ async def update(order_id: str):
 
 @router.get("/profit/")
 async def get_profit():
-    return calculate_profit()
+    records = [Order.from_mongo(record) for record in TRADER.mongo_client.read("order", {"sell_status": "filled"})]
+    return Helper.calculate_profit(records)
 
 @router.get("/feed/")
 async def get_feed():
     ret = list()
-    orders = [Order().from_mongo(record) for record in MONGO_CLIENT.read("order", {})]
+    orders = [Order().from_mongo(record) for record in TRADER.mongo_client.read("order", {})]
     # id: 1,
     # content: 'Bought 0.08728136 @229.144',
     # target: 'AAPL',
