@@ -77,6 +77,7 @@ class TradingDataClient(Client):
         return self.get(url)
     
     def get_historical_bars(self, asset: str, timeframe: str, limit: int, start: str, end: str):
+        '''Gets the historical bars for a given asset, within the specified timeframe for regular trading days.'''
         url = f"{self.base_url}/v2/stocks/{asset}/bars?timeframe={timeframe}&start={start}&end={end}&limit={limit}&adjustment=raw&feed=iex&sort=desc"
         r = self.get(url)
         return r

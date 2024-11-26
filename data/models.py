@@ -3,7 +3,7 @@ import os
 from datetime import datetime, UTC
 from dataclasses import dataclass, asdict, fields
 
-from bson import ObjectId
+from bson import ObjectId, json_util
 
 IGNORE_FIELDS = ["_id"]
 
@@ -29,7 +29,7 @@ class BaseModel():
         return cls(**filtered_data)
 
     def to_json(self):
-        return json.dumps(asdict(self))
+        return json_util.dumps(asdict(self))
     
     def to_mongo(self) -> dict:
         ret = dict()
@@ -67,7 +67,7 @@ class Watchlist(BaseModel):
         self.total_profit = self.total_profit + profit
 
 @dataclass
-class OrderBatch(BaseModel):
+class Order(BaseModel):
     _id: ObjectId = None
     symbol: str = None
     quantity: float = None
