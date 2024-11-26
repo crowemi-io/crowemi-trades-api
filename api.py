@@ -1,9 +1,10 @@
+import os
 import uvicorn
 import logging
 from fastapi import FastAPI, APIRouter
 from routers import health, order
 
-from trader import trade
+from trader import Trader
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -12,7 +13,7 @@ router = APIRouter()
 
 @router.post("/")
 def cron():
-    if trade():
+    if Trader().run():
         return {"Status": "Success"}
     else:
         return {"Status": "Failure"}
