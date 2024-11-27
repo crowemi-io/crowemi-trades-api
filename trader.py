@@ -225,7 +225,7 @@ class Trader():
         filled_avg_price = float(filled_avg_price) if filled_avg_price else None
         filled_qty = order.get("filled_qty", None)
         filled_qty = float(filled_qty) if filled_qty else None
-        filled_at = order.get("filled_at", None)
+        filled_at = datetime.fromisoformat(order.get("filled_at", None))
         created_at = datetime.fromisoformat(order.get("created_at", None))
         updated_at = datetime.fromisoformat(order.get("updated_at", None))
 

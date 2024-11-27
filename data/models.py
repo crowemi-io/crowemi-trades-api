@@ -81,7 +81,7 @@ class Order(BaseModel):
     buy_order_id: str = None
     buy_status: str = None
     buy_price: float = 0
-    buy_at_utc: datetime | None = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
+    buy_at_utc: datetime = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
     buy_session: str = None
 
     sell_order_id: str = None
