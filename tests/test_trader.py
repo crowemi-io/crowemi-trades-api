@@ -9,6 +9,21 @@ class TestTrader(unittest.TestCase):
 
     def setUp(self):
         self.trader = Trader(get_local_config())
+
+    def test_log(self):
+        pass
+
+    def test_process_sell(self):
+        pass
+
+    def test_rebuy(self):
+        pass
+
+    def test_buy(self):
+        pass
+
+    def test_sell(self):
+        pass
         
     def test_avg_daily_swing(self):
         start_date = datetime.now(UTC)

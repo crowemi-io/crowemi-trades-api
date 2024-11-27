@@ -17,6 +17,10 @@ class TestAlpaca(unittest.TestCase):
         orders = self.trader.trading_client.get_order()
         self.assertGreater(len(orders), 0)
 
+    def test_get_asset(self):
+        asset = self.trader.trading_client.get_asset("AMZN")
+        self.assertIsNotNone(asset)
+
 
 
 

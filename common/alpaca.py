@@ -30,7 +30,7 @@ class Client:
         if req.status_code == 200:
             return json.loads(req.content)
         else:
-            return None
+            raise Exception(f"Error: {req.content}")
 
 
 class TradingClient(Client):
@@ -62,7 +62,7 @@ class TradingClient(Client):
     def get_positions(self):
         return self.get(f"{self.base_url}/v2/positions")
 
-    def create_order(self, payload: dict):
+    def create_order(self, payload: str):
         return self.post(f"{self.base_url}/v2/orders", payload)
     
     def create_watchlist(self, name: str, symbols: list[str]):

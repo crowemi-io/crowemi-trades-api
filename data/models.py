@@ -51,6 +51,10 @@ class Watchlist(BaseModel):
     total_buy: int = 0
     total_sell: int = 0
     total_profit: float = 0.0
+    extended_hours: bool = False
+    batch_size: int = 20
+    total_allowed_batches: int = 5
+
 
     def update_buy(self, session_id: str):
         self.last_buy_at = datetime.now(UTC)
@@ -77,13 +81,13 @@ class Order(BaseModel):
     buy_order_id: str = None
     buy_status: str = None
     buy_price: float = 0
-    buy_at_utc: datetime = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
+    buy_at_utc: datetime | None = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
     buy_session: str = None
 
     sell_order_id: str = None
     sell_status: str = None
     sell_price: float = 0
-    sell_at_utc: datetime = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
+    sell_at_utc: datetime | None = None
     sell_session: str = None
 
     def calculate_profit(self):
