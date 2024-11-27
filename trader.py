@@ -32,20 +32,28 @@ class Trader():
 
         self.debug = config.get("debug", False)
 
+    def _log(self, message: str, log_level: str = "info", obj: dict = None):
+        print(f"crowemi-trades: {self.SESSION_ID} {log_level}: {message}")
+        if obj:
+            print(f"crowemi-trades: {self.SESSION_ID} {log_level}: {obj}")
+        self.mongo_client._log(message, self.SESSION_ID, log_level, obj)
+        if log_level == LogLevel.ERROR:
+            alert_channel(f"crowemi-trades: {self.SESSION_ID} {log_level}: {message}", self.bot_id, self.bot_channel)
+
     def run(self) -> bool:
-        self.log("Start", LogLevel.INFO)
+        self._log("Start", LogLevel.INFO)
         if self.debug:
-            self.log("Debug mode enabled", LogLevel.DEBUG)
-            self.log(self.api_key, LogLevel.DEBUG)
-            self.log(self.api_secret_key, LogLevel.DEBUG)
-            self.log(self.api_url_base, LogLevel.DEBUG)
-            self.log(self.data_api_url_base, LogLevel.DEBUG)
+            self._log("Debug mode enabled", LogLevel.DEBUG)
+            self._log(self.api_key, LogLevel.DEBUG)
+            self._log(self.api_secret_key, LogLevel.DEBUG)
+            self._log(self.api_url_base, LogLevel.DEBUG)
+            self._log(self.data_api_url_base, LogLevel.DEBUG)
 
         # is the market open?
         clock = self.trading_client.get_clock()
         if not clock['is_open']:
             # if the market is closed, exit the application (unless debug is enabled)
-            self.log(f"Market is closed.", LogLevel.WARNING, {"clock": clock})
+            self._log(f"Market is closed.", LogLevel.WARNING, {"clock": clock})
             if not self.debug:
                 return True
         
@@ -60,20 +68,20 @@ class Trader():
 
             # no open orders
             if not open_orders:
-                self.log(f"No active orders {watchlist.symbol}; running entry.", LogLevel.INFO)
+                self._log(f"No active orders {watchlist.symbol}; running entry.", LogLevel.INFO)
                 if self.OVERRIDE_ENTRY:
                     if not self.debug:
                         self.buy(watchlist, self.BATCH_SIZE) # TODO: pull batch size from watchlist
                 else:
-                    self.log(f"No entry point found for {watchlist.symbol}", LogLevel.INFO)
+                    self._log(f"No entry point found for {watchlist.symbol}", LogLevel.INFO)
             else:
-                self.log(f"Active orders found {watchlist.symbol}; total orders {len(open_orders)}; running sell.", LogLevel.INFO)
+                self._log(f"Active orders found {watchlist.symbol}; total orders {len(open_orders)}; running sell.", LogLevel.INFO)
                 # process sell criteria and execute sell if met
                 self.process_sell(open_orders, watchlist, last_close, latest_bar)
                 
                 self.rebuy(open_orders, watchlist, last_close)
 
-        self.log("End", LogLevel.INFO)
+        self._log("End", LogLevel.INFO)
         return True
     
     def process_sell(self, o: Order, a: Watchlist, lc: float, lb: dict) -> bool:
@@ -82,7 +90,7 @@ class Trader():
             # we need to skip the sell if we purchased the stock today
             pdt = [order for order in o if order.buy_at_utc.date() == datetime.now(UTC).date()]
             if len(pdt) > 0:
-                self.log(f"Stock {a.symbol} was purchased today {datetime.now(UTC).date()}, skipping sell.", LogLevel.INFO)
+                self._log(f"Stock {a.symbol} was purchased today {datetime.now(UTC).date()}, skipping sell.", LogLevel.INFO)
                 self.rebuy(o, a, lc)
                 return False
         
@@ -90,12 +98,12 @@ class Trader():
         start_date = end_date - timedelta(days=60)
         bars = self.data_client.get_historical_bars(a.symbol, "1D", 1000, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
         avg_daily_swing_25 = Helper.process_bar(bars, 30)["avg_daily_swing_25"]
-        self.log(f"Stock {a.symbol} 25% average daily swing {avg_daily_swing_25}.", LogLevel.INFO)
+        self._log(f"Stock {a.symbol} 25% average daily swing {avg_daily_swing_25}.", LogLevel.INFO)
         for order in o:
             # sell if the stock has increased by 25% of the average daily swing for previous 30 days
             target_price = round((order.buy_price + avg_daily_swing_25), 2)
             latest_price = float(lb[a.symbol]['c'])
-            self.log(f"Target price: {target_price}; Latest bar: {latest_price}", LogLevel.INFO)
+            self._log(f"Target price: {target_price}; Latest bar: {latest_price}", LogLevel.INFO)
             if target_price <= latest_price:
                 self.sell(a, order)
         return True
@@ -106,25 +114,19 @@ class Trader():
             #   1. the previous buy has dropped by 2.5%
             last_order = max(order_batch, key=lambda obj: obj.created_at)
             rebuy_price = last_order.buy_price - (last_order.buy_price * .025)
-            self.log(f"Rebuy price {rebuy_price}; Last order price {last_order.buy_price}", LogLevel.INFO)
+            self._log(f"Rebuy price {rebuy_price}; Last order price {last_order.buy_price}", LogLevel.INFO)
             if lc <= rebuy_price:
-                self.log(f"Rebuying stock {a.symbol}; last order {last_order.buy_price}; last close {lc}", LogLevel.INFO)
+                self._log(f"Rebuying stock {a.symbol}; last order {last_order.buy_price}; last close {lc}", LogLevel.INFO)
                 if not self.debug:
                     self.buy(a, self.BATCH_SIZE)
             else:
-                self.log(f"No entry point found for {a.symbol}", LogLevel.INFO)
+                self._log(f"No entry point found for {a.symbol}", LogLevel.INFO)
 
-    def log(self, message: str, log_level: str = "info", obj: dict = None):
-        print(f"crowemi-trades: {self.SESSION_ID} {log_level}: {message}")
-        if obj:
-            print(f"crowemi-trades: {self.SESSION_ID} {log_level}: {obj}")
-        self.mongo_client.log(message, self.SESSION_ID, log_level, obj)
-        if log_level == LogLevel.ERROR:
-            alert_channel(f"crowemi-trades: {self.SESSION_ID} {log_level}: {message}", self.bot_id, self.bot_channel)
-
-    def buy(self, w: Watchlist, notional: float):
+    def buy(self, w: Watchlist, notional: float) -> bool:
+        status: bool = False
         if self.debug:
-            return
+            self._log(f"Skipping buy {w.symbol}@{notional}", LogLevel.DEBUG)
+            return status
 
         try:
             payload = {
@@ -135,7 +137,7 @@ class Trader():
                 "symbol": w.symbol
             }
             log_message = f"buying stock {w.symbol}@{notional}"
-            self.log(f"buying stock {w.symbol}@{notional}", LogLevel.INFO, payload)
+            self._log(f"buying stock {w.symbol}@{notional}", LogLevel.INFO, payload)
             order = self.trading_client.create_order(payload)
             if order.get("status", None) == "pending_new":
                 # sometimes the order doesn't process immediately
@@ -146,10 +148,15 @@ class Trader():
 
             w.update_buy(self.SESSION_ID)
             self.mongo_client.update("watchlist", {"symbol": w.symbol}, w.to_mongo(), upsert=False)
+            # TODO: move this outside of function
             alert_channel(log_message, self.bot_id, self.bot_channel)
 
+            status = True
+
         except Exception as e:
-            self.log(f"Error buying stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
+            self._log(f"Error buying stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
+        finally:
+            return status
 
     def sell(self, w: Watchlist, o: Order):
         if self.debug:
@@ -163,7 +170,7 @@ class Trader():
                 "qty": o.quantity,
                 "symbol": w.symbol
             }
-            self.mongo_client.log(f"selling stock {w.symbol}", LogLevel.INFO, payload)
+            self.mongo_client._log(f"selling stock {w.symbol}", LogLevel.INFO, payload)
             order = self.trading_client.create_order(payload)
             if order.get("status", None) == "pending_new":
                 # sometimes the order doesn't process immediately
@@ -184,7 +191,7 @@ class Trader():
             w.update_sell(self.SESSION_ID, o.profit)
             alert_channel(f"selling stock {w.symbol}; Profit {o.profit}", self.bot_id, self.bot_channel)
         except Exception as e:
-            self.log(f"Error selling stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
+            self._log(f"Error selling stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
     def backfill(self, symbol: str = None, dry_run: bool = True) -> bool:
 
@@ -239,7 +246,7 @@ class Trader():
             )
         except Exception as e:
             print(f"Error creating order: {e}")
-            self.log(f"Error creating order: {e}", LogLevel.ERROR, order)
+            self._log(f"Error creating order: {e}", LogLevel.ERROR, order)
             return None
         
         return order_batch
