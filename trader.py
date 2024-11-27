@@ -49,36 +49,29 @@ class Trader():
             if not self.debug:
                 return True
         
-        active_symbols = [Watchlist.from_mongo(doc) for doc in self.mongo_client.read("watchlist", {"is_active": True})]
+        active_watchlists = [Watchlist.from_mongo(doc) for doc in self.mongo_client.read("watchlist", {"is_active": True})]
 
-        for a in active_symbols:
-            latest_bar = self.data_client.get_latest_bar(a.symbol)['bars']
-            latest_close = float(latest_bar[a.symbol]['c'])
-            # get all order from alpaca and all order the the database
-            alpaca_orders = self.trading_client.get_orders(a.symbol)
-            all_orders = [Order.from_mongo(doc) for doc in self.mongo_client.read("order", {"symbol": a.symbol})]
-            missing_orders = [order for order in alpaca_orders if order.get("id") not in [o.buy_order_id for o in all_orders]]
-            if missing_orders:
-                self.log(f"Missing orders found {a.symbol}; total orders {len(missing_orders)}", LogLevel.WARNING)
-                [self.mongo_client.write("order", order.to_mongo()) for order in missing_orders]
-
+        for watchlist in active_watchlists:
+            latest_bar = self.data_client.get_latest_bar(watchlist.symbol)['bars']
+            last_close = float(latest_bar[watchlist.symbol]['c'])
+            
             # after updating orders, get those orders that have been filled
-            open_orders = [Order.from_mongo(doc) for doc in self.mongo_client.read("order", {"symbol": a.symbol, "buy_status": "filled", "sell_status": None})]
+            open_orders = [Order.from_mongo(doc) for doc in self.mongo_client.read("order", {"symbol": watchlist.symbol, "buy_status": "filled", "sell_status": None})]
 
             # no open orders
             if not open_orders:
-                self.log(f"No active orders {a.symbol}; running entry.", LogLevel.INFO)
+                self.log(f"No active orders {watchlist.symbol}; running entry.", LogLevel.INFO)
                 if self.OVERRIDE_ENTRY:
                     if not self.debug:
-                        self.buy(a, self.BATCH_SIZE) # TODO: pull batch size from watchlist
+                        self.buy(watchlist, self.BATCH_SIZE) # TODO: pull batch size from watchlist
                 else:
-                    self.log(f"No entry point found for {a.symbol}", LogLevel.INFO)
+                    self.log(f"No entry point found for {watchlist.symbol}", LogLevel.INFO)
             else:
-                self.log(f"Active orders found {a.symbol}; total orders {len(open_orders)}; running sell.", LogLevel.INFO)
+                self.log(f"Active orders found {watchlist.symbol}; total orders {len(open_orders)}; running sell.", LogLevel.INFO)
                 # process sell criteria and execute sell if met
-                self.process_sell(open_orders, a, latest_close, latest_bar)
+                self.process_sell(open_orders, watchlist, last_close, latest_bar)
                 
-                self.rebuy(open_orders, a, latest_close)
+                self.rebuy(open_orders, watchlist, last_close)
 
         self.log("End", LogLevel.INFO)
         return True
@@ -108,13 +101,14 @@ class Trader():
         return True
 
     def rebuy(self, order_batch: Order, a: Watchlist, lc: float):
+        '''This is the logic for determining if we should rebuy a stock'''
         if len(order_batch) <= self.TOTAL_ALLOWED_BATCHES:
             #   1. the previous buy has dropped by 2.5%
             last_order = max(order_batch, key=lambda obj: obj.created_at)
             rebuy_price = last_order.buy_price - (last_order.buy_price * .025)
             self.log(f"Rebuy price {rebuy_price}; Last order price {last_order.buy_price}", LogLevel.INFO)
             if lc <= rebuy_price:
-                self.log(f"Rebuying stock {a.symbol}; last order {last_order.buy_price}; current price {lc}", LogLevel.INFO)
+                self.log(f"Rebuying stock {a.symbol}; last order {last_order.buy_price}; last close {lc}", LogLevel.INFO)
                 if not self.debug:
                     self.buy(a, self.BATCH_SIZE)
             else:
@@ -125,8 +119,13 @@ class Trader():
         if obj:
             print(f"crowemi-trades: {self.SESSION_ID} {log_level}: {obj}")
         self.mongo_client.log(message, self.SESSION_ID, log_level, obj)
+        if log_level == LogLevel.ERROR:
+            alert_channel(f"crowemi-trades: {self.SESSION_ID} {log_level}: {message}", self.bot_id, self.bot_channel)
 
     def buy(self, w: Watchlist, notional: float):
+        if self.debug:
+            return
+
         try:
             payload = {
                 "side": "buy",
@@ -142,8 +141,8 @@ class Trader():
                 # sometimes the order doesn't process immediately
                 order = self.trading_client.get_order(order.get("id"))
 
-            order_batch = create_order_batch(order)
-            self.mongo_client.write("order", order_batch.to_mongo())
+            new_order: Order = self.create_order(order)
+            self.mongo_client.write("order", new_order.to_mongo())
 
             w.update_buy(self.SESSION_ID)
             self.mongo_client.update("watchlist", {"symbol": w.symbol}, w.to_mongo(), upsert=False)
@@ -153,6 +152,9 @@ class Trader():
             self.log(f"Error buying stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
     def sell(self, w: Watchlist, o: Order):
+        if self.debug:
+            return
+
         try:
             payload = {
                 "side": "sell",
@@ -184,29 +186,63 @@ class Trader():
         except Exception as e:
             self.log(f"Error selling stock {w.symbol}", LogLevel.ERROR, {"error": str(e)})
 
+    def backfill(self, symbol: str = None, dry_run: bool = True) -> bool:
 
-def create_order_batch(order, session_id) -> Order:
-    filled_avg_price = order.get("filled_avg_price", None)
-    filled_avg_price = float(filled_avg_price) if filled_avg_price else None
-    filled_qty = order.get("filled_qty", None)
-    filled_qty = float(filled_qty) if filled_qty else None
+        # this logic was originally in the run method, but was moved here not sure if its needed of if this is duplicated here :/
+        # # get all order from alpaca and all order the the database
+        # alpaca_orders = self.trading_client.get_order(a.symbol)
+        # all_orders = [Order.from_mongo(doc) for doc in self.mongo_client.read("order", {"symbol": a.symbol})]
+        # missing_orders = [order for order in alpaca_orders if order.get("id") not in [o.buy_order_id for o in all_orders]]
+        # if missing_orders:
+        #     self.log(f"Missing orders found {a.symbol}; total orders {len(missing_orders)}", LogLevel.WARNING)
+        #     [self.mongo_client.write("order", order.to_mongo()) for order in missing_orders]
 
-    order_batch = Order(
-        symbol = order.get("symbol", None),
-        quantity = filled_qty,
-        notional = order.get("notional", None),
-        buy_status = order.get("status", None),
-        buy_order_id = order.get("id", None),
-        buy_price = filled_avg_price,
-        buy_at_utc = datetime.now(UTC),
-        buy_session = session_id,
-        created_at_session = session_id,
-        created_at = datetime.fromisoformat(order.get("created_at", None)),
-        updated_at_session = session_id,
-        updated_at = datetime.fromisoformat(order.get("updated_at", None))
-    )
-    
-    return order_batch
+        ret = False
+        if symbol:
+            orders = self.trading_client.get_order(symbol=symbol)
+        else:
+            orders = self.trading_client.get_order()
+        for order in orders:
+            side = order.get("side")
+            if side == "buy":
+                matching_order = self.mongo_client.read("order", {"buy_order_id": order.get("id")})
+                if not matching_order:
+                    ret = True
+                    print(f"buy: {order.get("id")} {order.get("symbol")} created at {order.get("created_at")}")
+            if side == "sell":
+                matching_order = self.mongo_client.read("order", {"sell_order_id": order.get("id")})
+                if not matching_order:
+                    ret = True
+                    print(f"sell: {order.get("id")} {order.get("symbol")} created at {order.get("created_at")}")
+        return ret
+
+    def create_order(self, order) -> Order:
+        filled_avg_price = order.get("filled_avg_price", None)
+        filled_avg_price = float(filled_avg_price) if filled_avg_price else None
+        filled_qty = order.get("filled_qty", None)
+        filled_qty = float(filled_qty) if filled_qty else None
+
+        try:
+            order_batch = Order(
+                symbol = order.get("symbol", None),
+                quantity = filled_qty,
+                notional = order.get("notional", None),
+                buy_status = order.get("status", None),
+                buy_order_id = order.get("id", None),
+                buy_price = filled_avg_price,
+                buy_at_utc = datetime.fromisoformat(order.get("filled_at", None)),
+                buy_session = self.SESSION_ID,
+                created_at_session = self.SESSION_ID,
+                created_at = datetime.fromisoformat(order.get("created_at", None)),
+                updated_at_session = self.SESSION_ID,
+                updated_at = datetime.fromisoformat(order.get("updated_at", None))
+            )
+        except Exception as e:
+            print(f"Error creating order: {e}")
+            self.log(f"Error creating order: {e}", LogLevel.ERROR, order)
+            return None
+        
+        return order_batch
 
 
 

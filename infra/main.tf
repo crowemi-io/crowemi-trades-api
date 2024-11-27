@@ -68,7 +68,7 @@ resource "google_cloud_scheduler_job" "this" {
   name             = local.name
   region           = local.region
   project          = local.project
-  schedule         = "*/30 * * * *"
+  schedule         = "*/15 * * * *"
   time_zone        = "America/New_York"
   attempt_deadline = "320s"
 
