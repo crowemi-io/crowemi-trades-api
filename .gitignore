@@ -5,4 +5,7 @@ __pycache__/
 .terraform/
 .terraform.lock.hcl
 .pytest*
+
 infra/*.auto.tfvars
+infra/paper.hcl
+infra/prod.hcl

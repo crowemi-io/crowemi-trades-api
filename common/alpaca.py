@@ -30,7 +30,7 @@ class Client:
         if req.status_code == 200:
             return json.loads(req.content)
         else:
-            return None
+            raise Exception(f"Error: {req.content}")
 
 
 class TradingClient(Client):
@@ -43,19 +43,26 @@ class TradingClient(Client):
     def get_asset(self, asset: str):
         return self.get(f"{self.base_url}/v2/assets/{asset}")
 
-    def get_order(self, order_id: str):
-        return self.get(f"{self.base_url}/v2/orders/{order_id}")
+    def get_order(self, symbol: str = None, order_id: str = None, status: str = 'all') -> list:
+        if order_id:
+            return self.get(f"{self.base_url}/v2/orders/{order_id}")
+        else:
+            endpoint = f"{self.base_url}/v2/orders?status={status}"
+            if symbol:
+                endpoint += f"&symbols={symbol}"
 
-    def get_orders(self, symbol: str) -> list:
-        return self.get(f"{self.base_url}/v2/orders?symbols={symbol}")
+            return self.get(endpoint)
 
     def get_watchlist(self):
         return self.get(f"{self.base_url}/v2/watchlists")
         
     def get_clock(self):
         return self.get(f"{self.base_url}/v2/clock")
+    
+    def get_positions(self):
+        return self.get(f"{self.base_url}/v2/positions")
 
-    def create_order(self, payload: dict):
+    def create_order(self, payload: str):
         return self.post(f"{self.base_url}/v2/orders", payload)
     
     def create_watchlist(self, name: str, symbols: list[str]):

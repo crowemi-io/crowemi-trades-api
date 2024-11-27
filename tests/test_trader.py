@@ -2,15 +2,29 @@ import json
 import unittest
 from datetime import datetime, timedelta, UTC
 
-from common.helper import Helper
+from common.helper import Helper, get_local_config
+
 from trader import Trader
 
 class TestTrader(unittest.TestCase):
 
     def setUp(self):
-        with open(".secret/config-local.json", "r") as f:
-            config = json.loads(f.read())
-        self.trader = Trader(config)
+        self.trader = Trader(get_local_config())
+
+    def test_log(self):
+        pass
+
+    def test_process_sell(self):
+        pass
+
+    def test_rebuy(self):
+        pass
+
+    def test_buy(self):
+        pass
+
+    def test_sell(self):
+        pass
         
     def test_avg_daily_swing(self):
         start_date = datetime.now(UTC)
@@ -26,6 +40,10 @@ class TestTrader(unittest.TestCase):
         ]}
         a = Helper.process_bar(data, 5)
         assert round(a["avg_daily_swing"],2) == 3.69
+
+    def test_backfill(self):
+        has_missing = self.trader.backfill()
+        self.assertFalse(has_missing)
 
 
 if __name__ == '__main__':

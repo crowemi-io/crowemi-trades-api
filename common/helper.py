@@ -3,6 +3,12 @@ import json
 from datetime import datetime, timedelta, UTC
 
 
+def get_local_config() -> dict:
+    with open(".secret/config-local.json", "r") as f:
+        config = json.loads(f.read())
+    return config
+
+
 class Helper():
     @staticmethod
     def percent_change(old_value, new_value):

@@ -1,6 +1,7 @@
 import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, status
+
 
 from data.models import Order
 from trader import Trader
@@ -15,20 +16,26 @@ router = APIRouter(
 
 @router.get("/{order_id}")
 async def get_order(order_id: str):
-    return True
+
+    return status.HTTP_401_UNAUTHORIZED
 
 @router.get("/")
-async def get_orders():
-    return True
+async def get_order():
+    return status.HTTP_401_UNAUTHORIZED
 
 @router.patch("/profit/{order_id}")
 async def update(order_id: str):
-    pass 
+    return status.HTTP_401_UNAUTHORIZED 
 
 @router.get("/profit/")
 async def get_profit():
     records = [Order.from_mongo(record) for record in TRADER.mongo_client.read("order", {"sell_status": "filled"})]
     return Helper.calculate_profit(records)
+
+@router.get("/position/")
+async def get_position():
+    ret = Trader().trading_client.get_positions()
+    return ret
 
 @router.get("/feed/")
 async def get_feed():
