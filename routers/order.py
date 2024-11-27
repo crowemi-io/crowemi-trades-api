@@ -2,6 +2,7 @@ import json
 
 from fastapi import APIRouter, status
 
+
 from data.models import Order
 from trader import Trader
 from common.helper import Helper
@@ -15,6 +16,7 @@ router = APIRouter(
 
 @router.get("/{order_id}")
 async def get_order(order_id: str):
+
     return status.HTTP_401_UNAUTHORIZED
 
 @router.get("/")

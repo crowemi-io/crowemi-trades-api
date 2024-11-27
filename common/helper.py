@@ -8,6 +8,7 @@ def get_local_config() -> dict:
         config = json.loads(f.read())
     return config
 
+
 class Helper():
     @staticmethod
     def percent_change(old_value, new_value):

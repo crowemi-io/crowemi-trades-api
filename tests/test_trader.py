@@ -3,6 +3,7 @@ import unittest
 from datetime import datetime, timedelta, UTC
 
 from common.helper import Helper, get_local_config
+
 from trader import Trader
 
 class TestTrader(unittest.TestCase):
@@ -43,6 +44,7 @@ class TestTrader(unittest.TestCase):
     def test_backfill(self):
         has_missing = self.trader.backfill()
         self.assertFalse(has_missing)
+
 
 if __name__ == '__main__':
     unittest.main()
