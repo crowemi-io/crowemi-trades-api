@@ -64,7 +64,7 @@ class Trader():
             latest_bar = self.data_client.get_latest_bar(watchlist.symbol)['bars']
             last_close = float(latest_bar[watchlist.symbol]['c'])
             
-            # get those orders that have been filled
+            # get those orders that have not been filled
             open_orders = [Order.from_mongo(doc) for doc in self.mongo_client.read("order", {"symbol": watchlist.symbol, "buy_status": "filled", "sell_status": None})]
 
             # no open orders
@@ -86,7 +86,7 @@ class Trader():
             # we need to skip the sell if we purchased the stock today
             pdt = [order for order in o if order.buy_at_utc.date() == datetime.now(UTC).date()]
             if len(pdt) > 0:
-                self._log(f"Stock {w.symbol} was purchased today {datetime.now(UTC).date()}, skipping sell.", LogLevel.INFO)
+                self._log(f"Stock {w.symbol} was purchased today {datetime.now(UTC).date()}", LogLevel.INFO)
                 return False
         
         end_date = datetime.now(UTC) # we want today minus thirty days for the calculation
@@ -169,9 +169,13 @@ class Trader():
             self._log(f"selling stock {w.symbol}", LogLevel.INFO, payload)
             # create sell order on alpaca
             order = self.trading_client.create_order(payload)
+            self._log(f"Success selling stock {w.symbol}", LogLevel.INFO, order)
+
             if not order.get("status", None) == "filled":
                 # sometimes the order doesn't process immediately
-                order = self.trading_client.get_order(order.get("id"))
+                filled_order = self.trading_client.get_order(order_id=order.get("id"))
+                if filled_order:
+                    order = filled_order
 
             o.sell_order_id = order.get("id", None)
             o.sell_status = order.get("status", None)
