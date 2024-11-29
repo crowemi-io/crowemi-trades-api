@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime, timedelta, UTC
 
 from common.helper import Helper, get_local_config
-
+from data.models import Order, Watchlist
 from trader import Trader
 
 class TestTrader(unittest.TestCase):
@@ -15,7 +15,11 @@ class TestTrader(unittest.TestCase):
         pass
 
     def test_process_sell(self):
-        pass
+        order = Order()
+        order.quantity = 0.148670145
+
+        watchlist = Watchlist(symbol="NVDA")
+        self.trader.sell(watchlist, order)
 
     def test_rebuy(self):
         pass
