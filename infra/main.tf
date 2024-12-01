@@ -14,16 +14,9 @@ resource "google_service_account" "this" {
 }
 
 resource "google_cloud_run_domain_mapping" "this" {
-<<<<<<< HEAD
-<<<<<<< HEAD
     count = local.env == "prod" ? 1 : 0
-=======
->>>>>>> 186a298 (add url mapping)
-=======
-    count = local.env == "prod" ? 1 : 0
->>>>>>> a142921 (only map domain to prod)
     location = "us-west1"
-    name     = "api.trades.crowemi.com"
+    name     = "api-trades.crowemi.com"
 
     metadata {
         namespace = local.project
