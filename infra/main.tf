@@ -13,6 +13,18 @@ resource "google_service_account" "this" {
   description  = "A service account for ${local.service} ${local.env}"
 }
 
+resource "google_cloud_run_domain_mapping" "this" {
+    location = "us-west1"
+    name     = "api.trades.crowemi.com"
+
+    metadata {
+        namespace = local.project
+    }
+
+    spec {
+        route_name = google_cloud_run_v2_service.this.name
+    }
+}
 
 resource "google_cloud_run_v2_service" "this" {
   name         = local.name
