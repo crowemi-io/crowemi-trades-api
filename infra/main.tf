@@ -14,7 +14,10 @@ resource "google_service_account" "this" {
 }
 
 resource "google_cloud_run_domain_mapping" "this" {
+<<<<<<< HEAD
     count = local.env == "prod" ? 1 : 0
+=======
+>>>>>>> 186a298 (add url mapping)
     location = "us-west1"
     name     = "api.trades.crowemi.com"
 
