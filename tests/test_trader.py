@@ -21,6 +21,10 @@ class TestTrader(unittest.TestCase):
         watchlist = Watchlist(symbol="NVDA")
         self.trader.sell(watchlist, order)
 
+    def test_open_orders(self):
+        open_orders = self.trader.get_open_orders("MSTR")
+        assert len(open_orders) > 0
+
     def test_rebuy(self):
         pass
 
