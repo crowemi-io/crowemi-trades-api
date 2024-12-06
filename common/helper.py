@@ -1,5 +1,6 @@
 import base64
 import json
+import requests
 from datetime import datetime, timedelta, UTC
 
 
@@ -7,6 +8,11 @@ def get_local_config() -> dict:
     with open(".secret/config-local.json", "r") as f:
         config = json.loads(f.read())
     return config
+
+def alert_channel(message: str, bot: str, channel_id: str = "-1002416451737"):
+    uri = f"https://api.telegram.org/bot{bot}/sendMessage?chat_id={channel_id}&text={message}"
+    ret = requests.get(uri)
+    return ret
 
 
 class Helper():

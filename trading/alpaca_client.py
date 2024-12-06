@@ -1,14 +1,10 @@
 import json
 import requests
 
+from trading.trading_client import TradingClient
 
-def alert_channel(message: str, bot: str, channel_id: str = "-1002416451737"):
-    uri = f"https://api.telegram.org/bot{bot}/sendMessage?chat_id={channel_id}&text={message}"
-    ret = requests.get(uri)
-    return ret
-
-
-class Client:
+        
+class AlpacaClient(TradingClient):
     def __init__(self, api_key, api_secret_key, base_url):
         self.headers = {
             "accept": "application/json",
@@ -17,23 +13,8 @@ class Client:
         }
         self.base_url = base_url
 
-    def get(self, url) -> dict | None:
-        req = requests.get(url, headers=self.headers)
-        if req.status_code == 200:
-            return json.loads(req.content)
-        else:
-            #TODO: do something
-            return None
-    
-    def post(self, url, payload) -> dict | None:
-        req = requests.post(url, json=payload, headers=self.headers)
-        if req.status_code == 200:
-            return json.loads(req.content)
-        else:
-            raise Exception(f"Error: {req.content}")
 
-
-class TradingClient(Client):
+class AlpacaTradingClient(AlpacaClient):
     def __init__(self, api_key, api_secret_key, base_url):
         super().__init__(api_key, api_secret_key, base_url)
 
@@ -69,7 +50,7 @@ class TradingClient(Client):
         return self.post(f"{self.base_url}/v2/watchlist", {"name": name, "symbols": symbols})
 
 
-class TradingDataClient(Client):
+class AlpacaTradingDataClient(AlpacaClient):
     def __init__(self, api_key, api_secret_key, base_url):
         super().__init__(api_key, api_secret_key, base_url)
 
