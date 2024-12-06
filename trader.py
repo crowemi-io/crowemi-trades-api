@@ -3,11 +3,13 @@ import os
 import uuid
 from datetime import datetime, timedelta, UTC
 
-from common.helper import Helper
-from trading.alpaca_client import TradingClient, TradingDataClient, alert_channel
-
+from common.helper import Helper, alert_channel
+from trading.alpaca_client import AlpacaTradingClient, AlpacaTradingDataClient
+from trading.coinbase_client import CoinbaseTradingClient
 from data.data_client import DataClient, LogLevel
-from models.base import Watchlist, Order
+from models.watchlist import Watchlist 
+from models.order import Order
+
 
 CONFIG = Helper.convert_config(os.getenv("CONFIG", None))
 
@@ -19,14 +21,21 @@ class Trader():
     SESSION_ID = uuid.uuid4().hex
 
     def __init__(self, config: dict = CONFIG):
-        self.api_key = config.get("api_key", None)
-        self.api_secret_key = config.get("api_secret_key", None)
-        self.api_url_base = config.get("api_url_base", None)
-        self.data_api_url_base = config.get("data_api_url_base", None)
         self.bot_id = config.get("bot_id", None)
         self.bot_channel = config.get("bot_channel", None)
-        self.trading_client = TradingClient(self.api_key, self.api_secret_key, self.api_url_base)
-        self.data_client = TradingDataClient(self.api_key, self.api_secret_key, self.data_api_url_base)
+        # ALPACA
+        self.alpaca_trading_client = AlpacaTradingClient(
+            config.get("alpaca_api_key", None), 
+            config.get("alpaca_api_secret_key", None), 
+            config.get("alpaca_api_url_base", None)
+        )
+        self.alpaca_data_client = AlpacaTradingDataClient(
+            config.get("alpaca_api_key", None), 
+            config.get("alpaca_api_secret_key", None), 
+            config.get("alpaca_data_api_url_base", None)
+        )
+        # COINBASE
+        self.coinbase_trading_client = CoinbaseTradingClient()
         self.mongo_client = DataClient(config.get("uri", None))
         self.extended_hours = False
 
@@ -50,7 +59,7 @@ class Trader():
             self._log(message=self.data_api_url_base, log_level=LogLevel.DEBUG)
 
         # is the market open?
-        clock = self.trading_client.get_clock()
+        clock = self.alpaca_trading_client.get_clock()
         if not clock['is_open']:
             # if the market is closed, exit the application (unless debug is enabled)
             self._log(
@@ -65,7 +74,7 @@ class Trader():
         active_watchlists = [Watchlist.from_mongo(doc) for doc in self.mongo_client.read("watchlist", {"is_active": True})]
 
         for watchlist in active_watchlists:
-            latest_bar = self.data_client.get_latest_bar(watchlist.symbol)['bars']
+            latest_bar = self.alpaca_data_client.get_latest_bar(watchlist.symbol)['bars']
             last_close = float(latest_bar[watchlist.symbol]['c'])
             
             # get those orders that have not been filled
@@ -111,7 +120,7 @@ class Trader():
         end_date = datetime.now(UTC) # we want today minus thirty days for the calculation
         start_date = end_date - timedelta(days=45)
         # gets the historical bars for calculating the average daily swing
-        bars = self.data_client.get_historical_bars(w.symbol, "1D", 1000, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
+        bars = self.alpaca_data_client.get_historical_bars(w.symbol, "1D", 1000, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
         avg_daily_swing_25 = Helper.process_bar(bars, 30)["avg_daily_swing_25"]
         self._log(
             message=f"Stock {w.symbol} 25% average daily swing {avg_daily_swing_25}.", 
@@ -182,10 +191,10 @@ class Trader():
                 obj=payload
             )
 
-            order = self.trading_client.create_order(payload)
+            order = self.alpaca_trading_client.create_order(payload)
             if not order.get("status", None) == "filled":
                 # sometimes the order doesn't process immediately
-                order = self.trading_client.get_order(w.symbol, order.get("id"))
+                order = self.alpaca_trading_client.get_order(w.symbol, order.get("id"))
 
             if order:
                 new_order: Order = self.create_order(order)
@@ -231,7 +240,7 @@ class Trader():
                 obj=payload
             )
             # create sell order on alpaca
-            order = self.trading_client.create_order(payload)
+            order = self.alpaca_trading_client.create_order(payload)
             self._log(
                 message=f"Success selling stock {w.symbol}", 
                 symbol=w.symbol, 
@@ -241,7 +250,7 @@ class Trader():
 
             if not order.get("status", None) == "filled":
                 # sometimes the order doesn't process immediately
-                filled_order = self.trading_client.get_order(order_id=order.get("id"))
+                filled_order = self.alpaca_trading_client.get_order(order_id=order.get("id"))
                 if filled_order:
                     order = filled_order
 
@@ -280,9 +289,9 @@ class Trader():
 
         ret = False
         if symbol:
-            orders = self.trading_client.get_order(symbol=symbol)
+            orders = self.alpaca_trading_client.get_order(symbol=symbol)
         else:
-            orders = self.trading_client.get_order()
+            orders = self.alpaca_trading_client.get_order()
         for order in orders:
             side = order.get("side")
             if side == "buy":

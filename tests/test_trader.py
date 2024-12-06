@@ -37,7 +37,7 @@ class TestTrader(unittest.TestCase):
     def test_avg_daily_swing(self):
         start_date = datetime.now(UTC)
         end_date = start_date - timedelta(days=60)
-        bars = self.trader.data_client.get_historical_bars("AAPL", "1D", 1000, end_date.strftime("%Y-%m-%d"), start_date.strftime("%Y-%m-%d"))
+        bars = self.trader.alpaca_data_client.get_historical_bars("AAPL", "1D", 1000, end_date.strftime("%Y-%m-%d"), start_date.strftime("%Y-%m-%d"))
         data = {"bars": [
             {'c': 232.89, 'h': 233.24, 'l': 229.74, 'n': 10483, 'o': 231.49, 't': '2024-11-25T05:00:00Z', 'v': 860206, 'vw': 231.678886},
             {'c': 229.75, 'h': 230.71, 'l': 228.175, 'n': 9155, 'o': 228.23, 't': '2024-11-22T05:00:00Z', 'v': 827598, 'vw': 229.656916},

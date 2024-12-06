@@ -33,7 +33,7 @@ async def get_profit():
 
 @router.get("/position/")
 async def get_position():
-    ret = Trader().trading_client.get_positions()
+    ret = Trader().alpaca_trading_client.get_positions()
     return ret
 
 @router.get("/feed/")

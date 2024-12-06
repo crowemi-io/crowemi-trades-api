@@ -11,6 +11,7 @@ class AlpacaClient(TradingClient):
             "APCA-API-KEY-ID": api_key,
             "APCA-API-SECRET-KEY": api_secret_key
         }
+        super().__init__(self.headers)
         self.base_url = base_url
 
 

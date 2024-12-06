@@ -1,10 +1,16 @@
 import json
+from enum import Enum
 from datetime import datetime, UTC
 from dataclasses import dataclass, asdict, fields
 
-from bson import ObjectId, json_util
+from bson import json_util
 
 IGNORE_FIELDS = ["_id"]
+
+
+class Type(Enum):
+    CRYPTO = "crypto"
+    STOCK = "stock"
 
 
 @dataclass

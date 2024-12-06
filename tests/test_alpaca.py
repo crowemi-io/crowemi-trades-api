@@ -11,14 +11,14 @@ class TestAlpaca(unittest.TestCase):
 
     def test_get_order(self):
         # get orders by symbol
-        orders = self.trader.trading_client.get_order("AAPL")
+        orders = self.trader.alpaca_trading_client.get_order("AAPL")
         self.assertGreater(len(orders), 0)
         # get all orders
-        orders = self.trader.trading_client.get_order()
+        orders = self.trader.alpaca_trading_client.get_order()
         self.assertGreater(len(orders), 0)
 
     def test_get_asset(self):
-        asset = self.trader.trading_client.get_asset("AMZN")
+        asset = self.trader.alpaca_trading_client.get_asset("AMZN")
         self.assertIsNotNone(asset)
 
 

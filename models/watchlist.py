@@ -3,12 +3,12 @@ from dataclasses import dataclass
 
 from bson import ObjectId
 
-from models.base import BaseModel
-
+from models.base import BaseModel, Type
 
 @dataclass
 class Watchlist(BaseModel):
     _id: ObjectId = None
+    type: Type = None
     symbol: str = None
     is_active: bool = True
     last_buy_at: datetime = None
