@@ -102,7 +102,7 @@ class Trader():
             pdt = [order for order in o if order.buy_at_utc.date() == datetime.now(UTC).date()]
             if len(pdt) > 0:
                 self._log(
-                    mesage=f"Stock {w.symbol} was purchased today {datetime.now(UTC).date()}", 
+                    message=f"Stock {w.symbol} was purchased today {datetime.now(UTC).date()}", 
                     symbol=w.symbol, 
                     log_level=LogLevel.INFO
                 )
