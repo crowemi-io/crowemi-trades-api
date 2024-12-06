@@ -12,8 +12,8 @@ class DataClient():
         self.client: MongoClient = MongoClient(uri)
         self.db = self.client.get_database(database)
 
-    def log(self, message: str, session: str, log_level: str = "info", obj: dict = None) -> None: 
-        self.write("log", {"created_at": datetime.now(UTC), "message": message, "level": log_level, "obj": obj, "session": session})
+    def log(self, message: str, session: str, log_level: str = "info", symbol: str = None, obj: dict = None) -> None: 
+        self.write("log", {"created_at": datetime.now(UTC), "message": message, "level": log_level, "symbol": symbol, "obj": obj, "session": session})
 
     def read(self, collection: str, query: dict):
         try:
