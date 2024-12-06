@@ -4,10 +4,10 @@ import uuid
 from datetime import datetime, timedelta, UTC
 
 from common.helper import Helper
-from common.alpaca import TradingClient, TradingDataClient, alert_channel
+from trading.alpaca_client import TradingClient, TradingDataClient, alert_channel
 
-from data.client import DataClient, LogLevel
-from data.models import Watchlist, Order
+from data.data_client import DataClient, LogLevel
+from models.base import Watchlist, Order
 
 CONFIG = Helper.convert_config(os.getenv("CONFIG", None))
 

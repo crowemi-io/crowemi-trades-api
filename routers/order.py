@@ -2,8 +2,7 @@ import json
 
 from fastapi import APIRouter, status
 
-
-from data.models import Order
+from models.order import Order
 from trader import Trader
 from common.helper import Helper
 

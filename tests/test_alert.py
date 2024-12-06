@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from common.alpaca import alert_channel
+from trading.alpaca_client import alert_channel
 
 
 class TestAlert(unittest.TestCase):

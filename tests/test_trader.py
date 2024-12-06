@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime, timedelta, UTC
 
 from common.helper import Helper, get_local_config
-from data.models import Order, Watchlist
+from models.base import Order, Watchlist
 from trader import Trader
 
 class TestTrader(unittest.TestCase):
