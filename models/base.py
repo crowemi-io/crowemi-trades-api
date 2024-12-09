@@ -8,9 +8,10 @@ from bson import json_util
 IGNORE_FIELDS = ["_id"]
 
 
-class Type(Enum):
+class AssetType(Enum):
     CRYPTO = "crypto"
     STOCK = "stock"
+    REIT = "reit"
 
 
 @dataclass

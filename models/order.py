@@ -3,13 +3,13 @@ from dataclasses import dataclass
 
 from bson import ObjectId
 
-from models.base import BaseModel, Type
+from models.base import BaseModel, AssetType
 
 
 @dataclass
 class Order(BaseModel):
     _id: ObjectId = None
-    type: Type = None
+    type: AssetType = None
     symbol: str = None
     quantity: float = None
     notional: float = None

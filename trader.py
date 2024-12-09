@@ -7,6 +7,8 @@ from common.helper import Helper, alert_channel
 from trading.alpaca_client import AlpacaTradingClient, AlpacaTradingDataClient
 from trading.coinbase_client import CoinbaseTradingClient
 from data.data_client import DataClient, LogLevel
+
+from models.base import AssetType
 from models.watchlist import Watchlist 
 from models.order import Order
 
@@ -35,7 +37,11 @@ class Trader():
             config.get("alpaca_data_api_url_base", None)
         )
         # COINBASE
-        self.coinbase_trading_client = CoinbaseTradingClient()
+        self.coinbase_trading_client = CoinbaseTradingClient(
+            config.get("coinbase_api_key", None),
+            config.get("coinbase_api_secret_key", None),
+            config.get("coinbase_api_url_base", None)
+        )
         self.mongo_client = DataClient(config.get("uri", None))
         self.extended_hours = False
 
@@ -53,10 +59,6 @@ class Trader():
         self._log(message="Start", log_level=LogLevel.INFO)
         if self.debug:
             self._log(message="Debug mode enabled", log_level=LogLevel.DEBUG)
-            self._log(message=self.api_key, log_level=LogLevel.DEBUG)
-            self._log(message=self.api_secret_key, log_level=LogLevel.DEBUG)
-            self._log(message=self.api_url_base, log_level=LogLevel.DEBUG)
-            self._log(message=self.data_api_url_base, log_level=LogLevel.DEBUG)
 
         # is the market open?
         clock = self.alpaca_trading_client.get_clock()
@@ -67,7 +69,6 @@ class Trader():
                 log_level=LogLevel.WARNING, 
                 obj={"clock": clock}
             )
-            self.extended_hours = True
             if not self.debug:
                 return True
         
@@ -340,8 +341,9 @@ class Trader():
         
         return order
 
-    def get_open_orders(self, symbol: str) -> list[Order]:
-        return [Order.from_mongo(doc) for doc in self.mongo_client.read("order", {"symbol": symbol, "buy_status": "filled", "sell_status": None})]
+    def get_open_orders(self, symbol: str, type = AssetType.STOCK) -> list[Order]:
+        filter = {"symbol": symbol, "type": type, "buy_status": "filled", "sell_status": None}
+        return [Order.from_mongo(doc) for doc in self.mongo_client.read("order", filter)]
 
 
 
