@@ -2,6 +2,7 @@ import unittest
 
 from common.helper import get_local_config
 
+from trading.trading_client import OrderStatus
 from trading.coinbase_client import CoinbaseTradingClient
 
 
@@ -20,7 +21,7 @@ class TestCoinbase(unittest.TestCase):
 
     def test_list_orders(self):
         # get orders by symbol
-        orders = self.client.list_orders()
+        orders = self.client.list_orders({"order_status": OrderStatus.OPEN.value})
         self.assertIsNotNone(orders)
 
     def test_list_assets(self):
@@ -28,9 +29,7 @@ class TestCoinbase(unittest.TestCase):
         self.assertIsNotNone(asset)
 
     def test_get_orders(self):
-        pass
-
-
+        order = self.client.get_order()
 
 
 

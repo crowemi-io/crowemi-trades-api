@@ -1,5 +1,16 @@
+from enum import Enum
 import json
 import requests
+
+
+class OrderStatus(Enum):
+    OPEN = "OPEN"
+    FILLED = "FILLED"
+    CANCELED = "CANCELLED"
+
+class OrderSide(Enum):
+    BUY = "buy"
+    SELL = "sell"
 
 
 class TradingClient:

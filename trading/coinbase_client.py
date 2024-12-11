@@ -1,9 +1,10 @@
 import jwt
+from urllib.parse import urlencode
 from cryptography.hazmat.primitives import serialization
 import time
 import secrets
 
-from trading.trading_client import TradingClient
+from trading.trading_client import TradingClient, OrderStatus, OrderSide
 
 
 class CoinbaseClient(TradingClient):
@@ -49,10 +50,14 @@ class CoinbaseTradingClient(CoinbaseClient):
         headers['Authorization'] = f"Bearer {self.build_jwt(uri)}"
         return headers
 
-    def list_orders(self):
+    def list_orders(self, filter: dict = None):
         # GET /orders/historical/batch
-        path = "api/v3/brokerage/orders/historical/batch"
-        return self.get(f"{self.base_url}{path}", self.get_headers("GET", path))
+        # https://api.coinbase.com/api/v3/brokerage/orders/historical/batch
+        uri_path = "api/v3/brokerage/orders/historical/batch"
+        if filter:
+            query_string = urlencode(filter)
+            path = f"{uri_path}?{query_string}"
+        return self.get(f"{self.base_url}{path}", self.get_headers("GET", uri_path))
 
     def list_accounts(self):
         # GET /brokerage/accounts
@@ -63,7 +68,7 @@ class CoinbaseTradingClient(CoinbaseClient):
         # POST /orders
         pass
     
-    def get_order(self, order_id):
+    def get_order(self, order_id: str):
         # GET /orders/historical/{order_id}
         path = f"api/v3/orders/historical/{order_id}"
         return self.get(f"{self.base_url}{path}", self.get_headers("GET", path))
