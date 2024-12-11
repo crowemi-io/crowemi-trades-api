@@ -1,6 +1,7 @@
 from enum import Enum
 import json
 import requests
+from abc import ABCMeta, abstractmethod
 
 
 class OrderStatus(Enum):
@@ -13,7 +14,7 @@ class OrderSide(Enum):
     SELL = "sell"
 
 
-class TradingClient:
+class TradingClient(metaclass=ABCMeta):
     def __init__ (self, headers): 
         self.headers = headers
         
@@ -34,3 +35,18 @@ class TradingClient:
         else:
             raise Exception(f"Error: {req.content}")
 
+    @abstractmethod
+    def buy(self):
+        pass
+
+    @abstractmethod
+    def sell(self):
+        pass
+
+    @abstractmethod
+    def rebuy(self):
+        pass
+
+    @abstractmethod
+    def is_runable(self) -> bool:
+        return True

@@ -19,6 +19,26 @@ class AlpacaTradingClient(AlpacaClient):
     def __init__(self, api_key, api_secret_key, base_url):
         super().__init__(api_key, api_secret_key, base_url)
 
+    def is_runable(self) -> tuple[bool, dict]:
+        # is the market open?
+        clock = self.get_clock()
+        if not clock['is_open']:
+            # if the market is closed, exit the application (unless debug is enabled)
+            return False, { "message": f"Market is closed. Skipping stocks.", "obj": { "clock": clock } }
+        else:
+            return True, None
+
+    def buy(self):
+        pass
+
+    def sell(self):
+        pass
+
+    def rebuy(self):
+        # Don’t buy within some percentage of all-time high, last six month (e.g. 10%) 🔥
+        pass
+    
+    # api methods
     def get_account(self):
         return requests.get(f"{self.base_url}/v2/account", headers=self.headers)
 
@@ -34,7 +54,7 @@ class AlpacaTradingClient(AlpacaClient):
                 endpoint += f"&symbols={symbol}"
 
             return self.get(endpoint)
-
+        
     def get_watchlist(self):
         return self.get(f"{self.base_url}/v2/watchlists")
         
@@ -54,6 +74,9 @@ class AlpacaTradingClient(AlpacaClient):
 class AlpacaTradingDataClient(AlpacaClient):
     def __init__(self, api_key, api_secret_key, base_url):
         super().__init__(api_key, api_secret_key, base_url)
+
+    def is_runable(self):
+        return super().is_runable()
 
     def get_latest_bar(self, symbol: str, feed: str = "iex"):
         return self.get(f"{self.base_url}/v2/stocks/bars/latest?symbols={symbol}&feed={feed}")

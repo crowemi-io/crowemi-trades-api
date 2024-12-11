@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, UTC
 
 from common.helper import Helper, alert_channel
+from trading.trading_client import TradingClient
 from trading.alpaca_client import AlpacaTradingClient, AlpacaTradingDataClient
 from trading.coinbase_client import CoinbaseTradingClient
 from data.data_client import DataClient, LogLevel
@@ -47,6 +48,15 @@ class Trader():
 
         self.debug = config.get("debug", False)
 
+    def client_factory(self, asset_type: AssetType) -> TradingClient:
+        if asset_type == AssetType.STOCK:
+            return self.alpaca_trading_client
+        if asset_type == AssetType.CRYPTO:
+            return self.coinbase_trading_client
+        else:
+            self._log(message="Invalid asset type", log_level=LogLevel.ERROR, obj={"type": asset_type})
+            raise Exception("Invalid asset type")
+
     def _log(self, message: str, log_level: str = "info", symbol: str = None, obj: dict = None):
         print(f"crowemi-trades: {self.SESSION_ID} {log_level}: {message}")
         if obj:
@@ -60,21 +70,11 @@ class Trader():
         if self.debug:
             self._log(message="Debug mode enabled", log_level=LogLevel.DEBUG)
 
-        # is the market open?
-        clock = self.alpaca_trading_client.get_clock()
-        if not clock['is_open']:
-            # if the market is closed, exit the application (unless debug is enabled)
-            self._log(
-                message=f"Market is closed.", 
-                log_level=LogLevel.WARNING, 
-                obj={"clock": clock}
-            )
-            if not self.debug:
-                return True
-        
-        active_watchlists = [Watchlist.from_mongo(doc) for doc in self.mongo_client.read("watchlist", {"is_active": True})]
+        active_watchlists = [Watchlist.from_mongo(doc) for doc in self.mongo_client.read("watchlist", {"is_active": True })]
 
         for watchlist in active_watchlists:
+            client: TradingClient = self.client_factory(watchlist.type)
+
             latest_bar = self.alpaca_data_client.get_latest_bar(watchlist.symbol)['bars']
             last_close = float(latest_bar[watchlist.symbol]['c'])
             
@@ -104,7 +104,7 @@ class Trader():
             log_level=LogLevel.INFO
         )
         return True
-    
+
     def process_sell(self, o: list[Order], w: Watchlist, lc: float, lb: dict) -> bool:
         # IMPORTANT! we should sell stock before we buy
         if self.STRICT_PDT:

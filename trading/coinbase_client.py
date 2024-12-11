@@ -20,7 +20,6 @@ class CoinbaseClient(TradingClient):
         self.api_secret_key = api_secret_key
         self.base_url = base_url
 
-
     def build_jwt(self, uri):
         private_key_bytes = self.api_secret_key.encode('utf-8')
         private_key = serialization.load_pem_private_key(private_key_bytes, password=None)
@@ -39,6 +38,9 @@ class CoinbaseClient(TradingClient):
         )
         return jwt_token
 
+    def is_runable(self):
+        # no run requirement
+        return super().is_runable()
 
 class CoinbaseTradingClient(CoinbaseClient):
     def __init__(self, api_key: str, api_secret_key: str, base_url: str):
