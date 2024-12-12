@@ -24,8 +24,7 @@ class TradingClient(metaclass=ABCMeta):
         if req.status_code == 200:
             return json.loads(req.content)
         else:
-            #TODO: do something
-            return None
+            raise Exception(f"Error: {req.content}")
     
     def post(self, url, payload, headers=None) -> dict | None:
         hdrs = headers if headers else self.headers
@@ -36,17 +35,21 @@ class TradingClient(metaclass=ABCMeta):
             raise Exception(f"Error: {req.content}")
 
     @abstractmethod
-    def buy(self):
+    def create_order(self, payload: dict):
         pass
 
     @abstractmethod
-    def sell(self):
+    def get_order():
         pass
 
     @abstractmethod
-    def rebuy(self):
+    def process_sell(self):
         pass
 
     @abstractmethod
     def is_runable(self) -> bool:
         return True
+
+    @abstractmethod
+    def get_latest_bar(self, symbol: str):
+        pass

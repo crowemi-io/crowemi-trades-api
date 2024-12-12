@@ -1,23 +1,32 @@
-import json
 import requests
+from datetime import datetime, timedelta, UTC
+
+from models.order import Order
+from models.watchlist import Watchlist
 
 from trading.trading_client import TradingClient
 
+from common.helper import Helper
+
         
 class AlpacaClient(TradingClient):
-    def __init__(self, api_key, api_secret_key, base_url):
+    def __init__(self, api_key, api_secret_key):
         self.headers = {
             "accept": "application/json",
             "APCA-API-KEY-ID": api_key,
             "APCA-API-SECRET-KEY": api_secret_key
         }
         super().__init__(self.headers)
-        self.base_url = base_url
 
 
 class AlpacaTradingClient(AlpacaClient):
-    def __init__(self, api_key, api_secret_key, base_url):
-        super().__init__(api_key, api_secret_key, base_url)
+    def __init__(self, api_key: str, api_secret_key: str, base_url: str, data_base_url: str):
+        super().__init__(api_key, api_secret_key)
+        
+        self.base_url = base_url
+        self.data_base_url = data_base_url
+        self.strict_pdt = True
+
 
     def is_runable(self) -> tuple[bool, dict]:
         # is the market open?
@@ -28,15 +37,66 @@ class AlpacaTradingClient(AlpacaClient):
         else:
             return True, None
 
-    def buy(self):
-        pass
+    def process_sell(self, o: list[Order], w: Watchlist, lc: float, lb: dict) -> tuple[list[Order], list[dict]]:
+        logs = list[dict]
+        sell_orders = list[Order]
+        # IMPORTANT! we should sell stock before we buy
+        if self.strict_pdt:
+            # we need to skip the sell if we purchased the stock today
+            pdt = [order for order in o if order.buy_at_utc.date() == datetime.now(UTC).date()]
+            if len(pdt) > 0:
+                logs.append({
+                    'message': f"Stock {w.symbol} was purchased today {datetime.now(UTC).date()}", 
+                    'symbol': w.symbol, 
+                })
+                return sell_orders, logs
 
-    def sell(self):
-        pass
+        end_date = datetime.now(UTC) # we want today minus thirty days for the calculation
+        start_date = end_date - timedelta(days=45)
+        # gets the historical bars for calculating the average daily swing
+        bars = self.get_historical_bars(w.symbol, "1D", 1000, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
+        avg_daily_swing_25 = Helper.process_bar(bars, 30)["avg_daily_swing_25"]
+        logs.append({
+            'message': f"Stock {w.symbol} 25% average daily swing {avg_daily_swing_25}.", 
+            'symbol': w.symbol
+        })
+        for order in o:
+            # sell if the stock has increased by 25% of the average daily swing for previous 30 days
+            target_price = round((order.buy_price + avg_daily_swing_25), 2)
+            latest_price = float(lb[w.symbol]['c'])
+            logs.append({
+                'message': f"Target price: {target_price}; Latest bar: {latest_price}", 
+                'symbol': w.symbol
+            })
+            if target_price <= latest_price:
+                sell_orders.append(order)
+        return sell_orders, logs
 
-    def rebuy(self):
+    def rebuy(self, order_batch: list[Order], a: Watchlist, lc: float) -> tuple[bool, list[dict]]:
         # Don’t buy within some percentage of all-time high, last six month (e.g. 10%) 🔥
-        pass
+        '''This is the logic for determining if we should rebuy a stock'''
+        logs = list[dict]
+        rebuy = False
+        if len(order_batch) < a.total_allowed_batches:
+            #   1. the previous buy has dropped by 2.5%
+            last_order = max(order_batch, key=lambda obj: obj.created_at)
+            rebuy_price = last_order.buy_price - (last_order.buy_price * .025)
+            logs.append({
+                'message': f"Rebuy price {rebuy_price}; Last close price {lc}", 
+                'symbol': a.symbol
+            })
+            if lc <= rebuy_price:
+                logs.append({
+                    'message': f"Rebuying stock {a.symbol}; last order {last_order.buy_price}; last close {lc}", 
+                    'symbol': a.symbol
+                })
+                return True, logs
+            else:
+                logs.append({
+                    'message': f"Last close greater than rebuy, no rebuy {a.symbol}", 
+                    'symbol': a.symbol
+                })
+                return False, logs
     
     # api methods
     def get_account(self):
@@ -70,26 +130,49 @@ class AlpacaTradingClient(AlpacaClient):
     def create_watchlist(self, name: str, symbols: list[str]):
         return self.post(f"{self.base_url}/v2/watchlist", {"name": name, "symbols": symbols})
 
-
-class AlpacaTradingDataClient(AlpacaClient):
-    def __init__(self, api_key, api_secret_key, base_url):
-        super().__init__(api_key, api_secret_key, base_url)
-
-    def is_runable(self):
-        return super().is_runable()
-
+    # data
     def get_latest_bar(self, symbol: str, feed: str = "iex"):
-        return self.get(f"{self.base_url}/v2/stocks/bars/latest?symbols={symbol}&feed={feed}")
+        return self.get(f"{self.data_base_url}/v2/stocks/bars/latest?symbols={symbol}&feed={feed}")['bars']
 
     def get_latest_quote(self, symbol: str, feed: str = "iex"):
-        return self.get(f"{self.base_url}/v2/stocks/quotes/latest?symbols={symbol}&feed={feed}")
+        return self.get(f"{self.data_base_url}/v2/stocks/quotes/latest?symbols={symbol}&feed={feed}")
 
     def get_snapshot(self, asset: str, feed: str = "iex"):
-        url = f"{self.base_url}/v2/stocks/{asset}/snapshot?feed={feed}"
+        url = f"{self.data_base_url}/v2/stocks/{asset}/snapshot?feed={feed}"
         return self.get(url)
     
     def get_historical_bars(self, asset: str, timeframe: str, limit: int, start: str, end: str):
         '''Gets the historical bars for a given asset, within the specified timeframe for regular trading days.'''
-        url = f"{self.base_url}/v2/stocks/{asset}/bars?timeframe={timeframe}&start={start}&end={end}&limit={limit}&adjustment=raw&feed=iex&sort=desc"
+        url = f"{self.data_base_url}/v2/stocks/{asset}/bars?timeframe={timeframe}&start={start}&end={end}&limit={limit}&adjustment=raw&feed=iex&sort=desc"
         r = self.get(url)
         return r
+
+    def backfill(self, symbol: str = None, dry_run: bool = True) -> bool:
+
+        # this logic was originally in the run method, but was moved here not sure if its needed of if this is duplicated here :/
+        # # get all order from alpaca and all order the the database
+        # alpaca_orders = self.trading_client.get_order(a.symbol)
+        # all_orders = [Order.from_mongo(doc) for doc in self.mongo_client.read("order", {"symbol": a.symbol})]
+        # missing_orders = [order for order in alpaca_orders if order.get("id") not in [o.buy_order_id for o in all_orders]]
+        # if missing_orders:
+        #     self.log(f"Missing orders found {a.symbol}; total orders {len(missing_orders)}", LogLevel.WARNING)
+        #     [self.mongo_client.write("order", order.to_mongo()) for order in missing_orders]
+
+        ret = False
+        # if symbol:
+        #     orders = self.alpaca_trading_client.get_order(symbol=symbol)
+        # else:
+        #     orders = self.alpaca_trading_client.get_order()
+        # for order in orders:
+        #     side = order.get("side")
+        #     if side == "buy":
+        #         matching_order = self.mongo_client.read("order", {"buy_order_id": order.get("id")})
+        #         if not matching_order:
+        #             ret = True
+        #             print(f"buy: {order.get("id")} {order.get("symbol")} created at {order.get("created_at")}")
+        #     if side == "sell":
+        #         matching_order = self.mongo_client.read("order", {"sell_order_id": order.get("id")})
+        #         if not matching_order:
+        #             ret = True
+        #             print(f"sell: {order.get("id")} {order.get("symbol")} created at {order.get("created_at")}")
+        return ret

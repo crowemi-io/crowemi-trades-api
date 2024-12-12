@@ -78,3 +78,7 @@ class CoinbaseTradingClient(CoinbaseClient):
     def preview_order(self):
         # POST /orders/preview
         pass
+
+    # data
+    def get_latest_bar(self, symbol):
+        return True
