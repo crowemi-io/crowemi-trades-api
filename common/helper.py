@@ -3,16 +3,39 @@ import json
 import requests
 from datetime import datetime, timedelta, UTC
 
+from abc import ABC, abstractmethod
+
 
 def get_local_config() -> dict:
     with open(".secret/config-local.json", "r") as f:
         config = json.loads(f.read())
     return config
 
-def alert_channel(message: str, bot: str, channel_id: str = "-1002416451737"):
-    uri = f"https://api.telegram.org/bot{bot}/sendMessage?chat_id={channel_id}&text={message}"
-    ret = requests.get(uri)
-    return ret
+
+
+class Notifier(ABC):
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def alert():
+        pass
+
+class TelegramNotifier(Notifier):
+    def __init__(self, bot_id: str, channel_id: str = "-1002416451737"):
+        self.bot_id = bot_id
+        self.channel_id = channel_id
+
+    def alert(self, message: str, bot_id: str = None, channel_id: str = None):
+        # checks overrides
+        if not bot_id:
+            bot_id = self.bot_id
+        if not channel_id:
+            channel_id = self.channel_id
+
+        uri = f"https://api.telegram.org/bot{bot_id}/sendMessage?chat_id={channel_id}&text={message}"
+        ret = requests.get(uri)
+        return ret
 
 
 class Helper():

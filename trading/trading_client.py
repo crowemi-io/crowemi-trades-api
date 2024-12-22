@@ -3,6 +3,12 @@ import json
 import requests
 from abc import ABCMeta, abstractmethod
 
+from models.order import Order
+from models.watchlist import Watchlist
+
+from data.data_client import DataClient
+from common.helper import Notifier
+
 
 class OrderStatus(Enum):
     OPEN = "OPEN"
@@ -15,8 +21,10 @@ class OrderSide(Enum):
 
 
 class TradingClient(metaclass=ABCMeta):
-    def __init__ (self, headers): 
+    def __init__ (self, headers, data_client: DataClient, notifier: Notifier): 
         self.headers = headers
+        self.data_client = data_client
+        self.notifier = notifier
         
     def get(self, url, headers=None) -> dict | None:
         hdrs = headers if headers else self.headers
@@ -43,13 +51,28 @@ class TradingClient(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def process_sell(self):
+    def process_sell(self) -> bool:
         pass
 
     @abstractmethod
-    def is_runable(self) -> bool:
+    def is_runnable(self) -> bool:
         return True
 
     @abstractmethod
     def get_latest_bar(self, symbol: str):
+        pass
+
+    @abstractmethod
+    def process_buy(self) -> bool:
+        pass
+
+    @abstractmethod
+    def sell(self, w: Watchlist, o: Order):
+        pass    
+
+    @abstractmethod
+    def buy(self, w: Watchlist):
+        pass
+
+    def create_order_obj(self) -> Order:
         pass

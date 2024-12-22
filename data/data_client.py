@@ -1,19 +1,25 @@
 from datetime import datetime, UTC
 from pymongo import MongoClient
 
+
 class LogLevel:
     INFO = "info"
     ERROR = "error"
     WARNING = "warning"
     DEBUG = "debug"
 
+# TODO: convert this to mongo client
 class DataClient():
-    def __init__(self, uri: str, database: str = "crowemi-trades"):
+    def __init__(self, uri: str, database: str = "crowemi-trades", session_id: str = None):
+        self.session_id = session_id
         self.client: MongoClient = MongoClient(uri)
         self.db = self.client.get_database(database)
 
-    def log(self, message: str, session: str, log_level: str = "info", symbol: str = None, obj: dict = None) -> None: 
-        self.write("log", {"created_at": datetime.now(UTC), "message": message, "level": log_level, "symbol": symbol, "obj": obj, "session": session})
+    def log(self, message: str, log_level: str = LogLevel.INFO, symbol: str = None, obj: dict = None):
+        print(f"crowemi-trades: {self.session_id} {log_level}: {message}")
+        if obj:
+            print(f"crowemi-trades: {self.session_id} {log_level}: {obj}")
+        self.write("log", {"created_at": datetime.now(UTC), "message": message, "level": log_level, "symbol": symbol, "obj": obj, "session": self.session_id})
 
     def read(self, collection: str, query: dict):
         try:
