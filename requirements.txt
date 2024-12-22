@@ -3,6 +3,3 @@ requests==2.32.3
 fastapi[standard]==0.115.5
 PyJWT==2.8.0
 cryptography==42.0.5
-
-[dev]
-black==24.10.0
