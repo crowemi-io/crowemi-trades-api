@@ -22,7 +22,7 @@ class AlpacaTradingClient(TradingClient):
         self.strict_pdt = True
 
 
-    def is_runnable(self) -> tuple[bool, dict]:
+    def is_runnable(self) -> bool:
         # is the market open?
         clock = self.get_clock()
         if not clock['is_open']:

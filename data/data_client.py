@@ -1,6 +1,6 @@
 from datetime import datetime, UTC
 from pymongo import MongoClient
-
+import uuid
 
 class LogLevel:
     INFO = "info"
@@ -11,6 +11,9 @@ class LogLevel:
 # TODO: convert this to mongo client
 class DataClient():
     def __init__(self, uri: str, database: str = "crowemi-trades", session_id: str = None):
+        if not session_id:
+            session_id = uuid.uuid4().hex
+        
         self.session_id = session_id
         self.client: MongoClient = MongoClient(uri)
         self.db = self.client.get_database(database)
