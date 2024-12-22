@@ -8,7 +8,7 @@ COPY requirements.txt requirements.txt
 
 COPY common/helper.py common/helper.py
 
-COPY data/client.py data/client.py
+COPY data/data_client.py data/data_client.py
 
 COPY models/base.py models/base.py
 COPY models/order.py models/order.py
