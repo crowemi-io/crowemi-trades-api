@@ -91,7 +91,7 @@ class Trader():
                     symbol=watchlist.symbol
                 )
                 # TODO: we should probably do some checks before blanket buying
-                client.buy(client, watchlist)
+                client.buy(watchlist)
             else:
                 client.data_client.log(
                     message=f"Active orders found {watchlist.symbol}; total orders {len(open_orders)}; running sell.", 

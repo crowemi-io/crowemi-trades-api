@@ -71,33 +71,31 @@ class AlpacaTradingClient(TradingClient):
                 log_level=LogLevel.INFO
             )
             if target_price <= latest_price:
-                self.sell()
+                self.sell(w, order)
 
-    # TODO: lets call this process buy
     def process_buy(self, order_batch: list[Order], a: Watchlist, lc: float) -> None:
-        # Don’t buy within some percentage of all-time high, last six month (e.g. 10%) 🔥
         '''This is the logic for determining if we should rebuy a stock'''
-        logs = list[dict]
         if len(order_batch) < a.total_allowed_batches:
             #   1. the previous buy has dropped by 2.5%
             last_order = max(order_batch, key=lambda obj: obj.created_at)
             rebuy_price = last_order.buy_price - (last_order.buy_price * .025)
-            logs.append({
-                'message': f"Rebuy price {rebuy_price}; Last close price {lc}", 
-                'symbol': a.symbol
-            })
+            self.data_client.log(
+                message=f"Rebuy price {rebuy_price}; Last close price {lc}", 
+                symbol=a.symbol
+            )
+
             if lc <= rebuy_price:
-                logs.append({
-                    'message': f"Rebuying stock {a.symbol}; last order {last_order.buy_price}; last close {lc}", 
-                    'symbol': a.symbol
-                })
+                self.data_client.log(
+                    message=f"Rebuying stock {a.symbol}; last order {last_order.buy_price}; last close {lc}", 
+                    symbol=a.symbol
+                )
                 self.buy(a)
             else:
-                logs.append({
-                    'message': f"Last close greater than rebuy, no rebuy {a.symbol}", 
-                    'symbol': a.symbol
-                })
-    
+                self.data_client.log(
+                    message=f"Last close greater than rebuy, no rebuy {a.symbol}", 
+                    symbol=a.symbol
+                )
+
     def buy(self, w: Watchlist) -> bool:
         status: bool = False
         try:
@@ -124,7 +122,7 @@ class AlpacaTradingClient(TradingClient):
 
             if order:
                 # creates a new order object
-                new_order: Order = self.create_order(order)
+                new_order: Order = self.create_order_obj(order)
                 self.data_client.write("order", new_order.to_mongo())
 
                 w.update_buy(self.data_client.session_id)
@@ -207,6 +205,9 @@ class AlpacaTradingClient(TradingClient):
         filled_avg_price = float(filled_avg_price) if filled_avg_price else None
         filled_qty = order.get("filled_qty", None)
         filled_qty = float(filled_qty) if filled_qty else None
+        notional = order.get("notional", None)
+        notional = float(order.get("notional", None)) if filled_qty else None
+        
         if order.get("filled_at", None):
             filled_at = datetime.fromisoformat(order.get("filled_at", None))
         else:
@@ -226,20 +227,20 @@ class AlpacaTradingClient(TradingClient):
             order = Order(
                 symbol = order.get("symbol", None),
                 quantity = filled_qty,
-                notional = order.get("notional", None),
+                notional = notional,
                 buy_status = order.get("status", None),
                 buy_order_id = order.get("id", None),
                 buy_price = filled_avg_price,
                 buy_at_utc = filled_at,
-                buy_session = self.SESSION_ID,
-                created_at_session = self.SESSION_ID,
+                buy_session = self.data_client.session_id,
+                created_at_session = self.data_client.session_id,
                 created_at = created_at,
-                updated_at_session = self.SESSION_ID,
+                updated_at_session = self.data_client.session_id,
                 updated_at = updated_at
             )
         except Exception as e:
             print(f"Error creating order: {e}")
-            self._log(
+            self.data_client.log(
                 message=f"Error creating order: {e}", 
                 log_level=LogLevel.ERROR, 
                 obj=order)
