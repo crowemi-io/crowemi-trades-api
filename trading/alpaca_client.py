@@ -27,7 +27,12 @@ class AlpacaTradingClient(TradingClient):
         clock = self.get_clock()
         if not clock['is_open']:
             # if the market is closed, exit the application (unless debug is enabled)
-            self.notifier.alert({ "message": f"Market is closed. Skipping stocks.", "obj": { "clock": clock } })
+            message = f"Market is closed. Skipping stocks."
+            self.data_client.log(
+                message, 
+                LogLevel.INFO,
+                obj={ "message": message, "obj": { "clock": clock } }
+            )
             return False
         else:
             return True
