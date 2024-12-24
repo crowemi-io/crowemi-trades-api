@@ -1,6 +1,7 @@
 import requests
 from datetime import datetime, timedelta, UTC
 
+from models.base import AssetType
 from models.order import Order
 from models.watchlist import Watchlist
 from data.data_client import DataClient, LogLevel
@@ -19,7 +20,7 @@ class AlpacaTradingClient(TradingClient):
         
         self.base_url = base_url
         self.data_base_url = data_base_url
-        self.strict_pdt = True
+        self.strict_pdt = False
 
 
     def is_runnable(self) -> bool:
@@ -73,7 +74,7 @@ class AlpacaTradingClient(TradingClient):
             if target_price <= latest_price:
                 self.sell(w, order)
 
-    def process_buy(self, order_batch: list[Order], a: Watchlist, lc: float) -> None:
+    def process_buy(self, order_batch: list[Order], a: Watchlist, lc: float) -> bool:
         '''This is the logic for determining if we should rebuy a stock'''
         if len(order_batch) < a.total_allowed_batches:
             #   1. the previous buy has dropped by 2.5%
@@ -90,11 +91,13 @@ class AlpacaTradingClient(TradingClient):
                     symbol=a.symbol
                 )
                 self.buy(a)
+                return True
             else:
                 self.data_client.log(
                     message=f"Last close greater than rebuy, no rebuy {a.symbol}", 
                     symbol=a.symbol
                 )
+                return False
 
     def buy(self, w: Watchlist) -> bool:
         status: bool = False
@@ -226,6 +229,7 @@ class AlpacaTradingClient(TradingClient):
         try:
             order = Order(
                 symbol = order.get("symbol", None),
+                type = AssetType.STOCK.value,
                 quantity = filled_qty,
                 notional = notional,
                 buy_status = order.get("status", None),

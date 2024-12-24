@@ -4,6 +4,8 @@ from common.helper import get_local_config
 
 from trading.alpaca_client import AlpacaTradingClient
 from data.data_client import DataClient
+from models.order import Order
+from models.watchlist import Watchlist
 
 
 class TestAlpaca(unittest.TestCase):
@@ -25,7 +27,11 @@ class TestAlpaca(unittest.TestCase):
         pass
 
     def test_process_buy(self):
-        pass
+        orders: list[Order]
+        watchlist: Watchlist
+        last_close: float
+
+        self.client.process_buy(orders, watchlist, last_close)
 
     def test_buy(self):
         pass
