@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from common.alpaca import alert_channel
+from common.helper import alert_channel
 
 
 class TestAlert(unittest.TestCase):
