@@ -119,9 +119,23 @@ class AlpacaTradingClient(TradingClient):
             )
 
             order = self.create_order(payload)
-            if not order.get("status", None) == "filled":
-                # sometimes the order doesn't process immediately
-                order = self.get_order(w.symbol, order.get("id"))
+            retry = 0
+            while True:
+                if order.get("status", None) == "filled":
+                    # sometimes the order doesn't process immediately
+                    order = self.get_order(w.symbol, order.get("id"))
+                    break
+
+                if retry >= 2:
+                    self.data_client.log(
+                        message=f"Warning: buy order status not filled.", 
+                        symbol=w.symbol, 
+                        log_level=LogLevel.WARNING,
+                        obj=order
+                    )
+                    break
+                retry += 1
+
 
             if order:
                 # creates a new order object
@@ -175,11 +189,21 @@ class AlpacaTradingClient(TradingClient):
                 obj=order
             )
 
-            if not order.get("status", None) == "filled":
-                # sometimes the order doesn't process immediately
-                filled_order = self.get_order(order_id=order.get("id"))
-                if filled_order:
-                    order = filled_order
+            retry = 0
+            while True:
+                if order.get("status", None) == "filled":
+                    # sometimes the order doesn't process immediately
+                    order = self.get_order(order_id=order.get("id"))
+                    break
+                if retry >= 2:
+                    self.data_client.log(
+                        message=f"Warning: sell order status not filled.", 
+                        symbol=w.symbol, 
+                        log_level=LogLevel.WARNING,
+                        obj=order
+                    )
+                    break
+                retry += 1
 
             o.sell_order_id = order.get("id", None)
             o.sell_status = order.get("status", None)
@@ -202,6 +226,28 @@ class AlpacaTradingClient(TradingClient):
                 log_level=LogLevel.ERROR, 
                 obj={"error": str(e)}
             )
+
+    def update_sell(self, w: Watchlist) -> bool:
+        try:
+            orders: list[Order] = self.data_client.read("order", {"symbol": w.symbol, "sell_order_id": { "$ne": None }, "sell_status": { "$ne": "filled"}})
+            for order in orders:
+                o = Order.from_mongo(order)
+                sell = self.get_order(order_id=order.get("sell_order_id"))
+                # update status
+                o.sell_status = sell.get("status", None)
+                # update fill price
+                filled_avg_price = sell.get("filled_avg_price", None)
+                filled_avg_price = float(filled_avg_price) if filled_avg_price else None
+                o.sell_price = filled_avg_price
+                # update profit
+                o.calculate_profit()
+
+                self.data_client.update("order", {"_id": o._id}, o.to_mongo(), upsert=False)
+            return True
+        except Exception as e:
+            self.data_client.log(f"Error updating sell", LogLevel.ERROR, symbol=w.symbol, obj={"Error": str(e)})
+            return False
+
 
     def create_order_obj(self, order) -> Order:
         filled_avg_price = order.get("filled_avg_price", None)

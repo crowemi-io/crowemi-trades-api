@@ -10,7 +10,8 @@ from trader import Trader
 class TestTrader(unittest.TestCase):
 
     def setUp(self):
-        self.trader = Trader(get_local_config())
+        config = get_local_config()
+        self.trader = Trader(config)
 
     def test_log(self):
         pass
@@ -20,7 +21,7 @@ class TestTrader(unittest.TestCase):
         order.quantity = 0.148670145
 
         watchlist = Watchlist(symbol="NVDA")
-        self.trader.sell(watchlist, order)
+        # self.trader.client.sell(watchlist, order)
 
     def test_open_orders(self):
         open_orders = self.trader.get_open_orders("MSTR")

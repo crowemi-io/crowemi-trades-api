@@ -42,6 +42,10 @@ class TestAlpaca(unittest.TestCase):
     def test_create_order_obj(self):
         pass
 
+    def test_update_sell(self):
+        watchlist = Watchlist.from_mongo(self.client.data_client.read("watchlist", {"is_active": True, "symbol": "RKLB"})[0])
+        self.assertTrue(self.client.update_sell(watchlist))
+
     def test_get_order(self):
         # get orders by symbol
         orders = self.client.get_order("AAPL")
