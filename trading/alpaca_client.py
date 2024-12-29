@@ -121,9 +121,9 @@ class AlpacaTradingClient(TradingClient):
             order = self.create_order(payload)
             retry = 0
             while True:
+                # sometimes the order doesn't process immediately
+                order = self.get_order(w.symbol, order.get("id"))
                 if order.get("status", None) == "filled":
-                    # sometimes the order doesn't process immediately
-                    order = self.get_order(w.symbol, order.get("id"))
                     break
 
                 if retry >= 2:
@@ -191,9 +191,9 @@ class AlpacaTradingClient(TradingClient):
 
             retry = 0
             while True:
+                # sometimes the order doesn't process immediately
+                order = self.get_order(order_id=order.get("id"))
                 if order.get("status", None) == "filled":
-                    # sometimes the order doesn't process immediately
-                    order = self.get_order(order_id=order.get("id"))
                     break
                 if retry >= 2:
                     self.data_client.log(
