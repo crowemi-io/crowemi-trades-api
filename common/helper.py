@@ -58,16 +58,8 @@ class Helper():
         # what is the average swing of the stock, last 7 days
         ret = dict()
         
-        ret["period"] = period
-        zero_based_period = (period - 1)
-        ret["zero_based_period"] = zero_based_period
-
         last = bars.get("bars")[0]
         ret["last"] = last
-        current = bars.get("bars")[zero_based_period]
-        ret["current"] = current
-        previous = bars.get("bars")[zero_based_period + 1]
-        ret["previous"] = previous
 
         day = bars.get("bars")[0:period]
         daily_swing = list(map(lambda x: x["h"] - x["l"], day))
@@ -84,8 +76,6 @@ class Helper():
 
         percent_change = Helper.percent_change(day_high, last["c"])
         ret["percent_change"] = percent_change
-        current_percent_change = Helper.percent_change(previous['c'], current['c'])
-        ret["current_percent_change"] = current_percent_change
 
         return ret
 
