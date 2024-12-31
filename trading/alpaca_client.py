@@ -74,7 +74,7 @@ class AlpacaTradingClient(TradingClient):
             if target_price <= latest_price:
                 self.sell(w, order)
 
-    def process_buy(self, order_batch: list[Order], a: Watchlist, lc: float) -> bool:
+    def process_rebuy(self, order_batch: list[Order], a: Watchlist, lc: float) -> bool:
         '''This is the logic for determining if we should rebuy a stock'''
         if len(order_batch) < a.total_allowed_batches:
             #   1. the previous buy has dropped by 2.5%
@@ -90,14 +90,44 @@ class AlpacaTradingClient(TradingClient):
                     message=f"Rebuying stock {a.symbol}; last order {last_order.buy_price}; last close {lc}", 
                     symbol=a.symbol
                 )
-                self.buy(a)
-                return True
+                # rebuy the stock
+                if self.process_buy(a.symbol):
+                    self.buy(a)
+                    return True
+                else:
+                    self.data_client.log(
+                        message=f"Last close greater than rebuy, no rebuy {a.symbol}", 
+                        symbol=a.symbol
+                    )
+                    return False
             else:
                 self.data_client.log(
                     message=f"Last close greater than rebuy, no rebuy {a.symbol}", 
                     symbol=a.symbol
                 )
                 return False
+            
+    def process_buy(self, symbol: str) -> bool:
+        try:
+            end_date = datetime.now(UTC)
+            start_date = end_date - timedelta(days=30)
+            # gets the historical bars for calculating the average daily swing
+            bars = self.get_historical_bars(symbol, "1D", 7, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
+            hist = Helper.process_bar(bars, 7)
+            latest = self.get_latest_bar(symbol)
+            # the current price must be 25% less than the average daily swing
+            has_25_percent_swing = (hist["day_high"] - latest[symbol]["c"]) > hist["avg_daily_swing_25"]
+            # has_50_percent_swing = (hist["day_high"] - latest[symbol]["c"]) > hist["avg_daily_swing_50"]
+            # has_75_percent_swing = (hist["day_high"] - latest[symbol]["c"]) > hist["avg_daily_swing_75"]
+            return has_25_percent_swing
+        except Exception as e:
+            self.data_client.log(
+                message=f"Error processing buy {symbol}", 
+                symbol=symbol, 
+                log_level=LogLevel.ERROR, 
+                obj={"error": str(e)}
+            )
+            return False
 
     def buy(self, w: Watchlist) -> bool:
         status: bool = False

@@ -90,8 +90,8 @@ class Trader():
                     log_level=LogLevel.INFO, 
                     symbol=watchlist.symbol
                 )
-                # TODO: we should probably do some checks before blanket buying
-                client.buy(watchlist)
+                if client.process_buy(watchlist.symbol):
+                    client.buy(watchlist)
             else:
                 client.data_client.log(
                     message=f"Active orders found {watchlist.symbol}; total orders {len(open_orders)}; running sell.", 
@@ -99,8 +99,8 @@ class Trader():
                     log_level=LogLevel.INFO
                 )
                 # process sell criteria and execute sell if met
-                client.process_sell(open_orders, watchlist, last_close, latest_bar)
-                client.process_buy(open_orders, watchlist, last_close)
+                client.process_sell(open_orders, watchlist, last_close, latest_bar) # TODO: remove last_close, latest_bar
+                client.process_rebuy(open_orders, watchlist, last_close) # TODO: remove last_close
 
         client.data_client.log(
             message="End", 

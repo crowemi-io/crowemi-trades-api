@@ -26,12 +26,15 @@ class TestAlpaca(unittest.TestCase):
     def test_is_runnable(self):
         pass
 
-    def test_process_buy(self):
+    def test_process_rebuy(self):
         orders: list[Order]
         watchlist: Watchlist
         last_close: float
 
-        self.client.process_buy(orders, watchlist, last_close)
+        self.client.process_rebuy(orders, watchlist, last_close)
+
+    def test_process_buy(self):
+        self.assertTrue(self.client.process_buy("MSFT"))
 
     def test_buy(self):
         pass
@@ -61,7 +64,6 @@ class TestAlpaca(unittest.TestCase):
     def test_get_latest_bar(self):
         asset = self.client.get_latest_bar("AMZN")
         self.assertIsNotNone(asset)
-
 
 
 if __name__ == '__main__':

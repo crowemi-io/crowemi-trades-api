@@ -56,6 +56,9 @@ class CoinbaseTradingClient(TradingClient):
     def process_buy(self):
         return super().process_buy()
     
+    def process_rebuy(self):
+        return super().process_rebuy()
+    
     def buy(self):
         return super().buy()
     

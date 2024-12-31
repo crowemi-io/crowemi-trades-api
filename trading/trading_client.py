@@ -65,6 +65,10 @@ class TradingClient(metaclass=ABCMeta):
     @abstractmethod
     def process_buy(self) -> bool:
         pass
+    
+    @abstractmethod
+    def process_rebuy(self, w: Watchlist):
+        pass
 
     @abstractmethod
     def sell(self, w: Watchlist, o: Order):
