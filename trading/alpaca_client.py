@@ -91,7 +91,7 @@ class AlpacaTradingClient(TradingClient):
                     symbol=a.symbol
                 )
                 # rebuy the stock
-                if self.process_buy(a.symbol):
+                if self.process_buy(a):
                     self.buy(a)
                     return True
                 else:
@@ -107,23 +107,41 @@ class AlpacaTradingClient(TradingClient):
                 )
                 return False
             
-    def process_buy(self, symbol: str) -> bool:
+    def process_buy(self, watchlist: Watchlist) -> bool:
+        ret = True
         try:
+            if watchlist.is_suspend:
+                self.data_client.log(
+                    message=f"Stock {watchlist.symbol} has is_suspend flag set.", 
+                    symbol=watchlist.symbol, 
+                    log_level=LogLevel.WARNING, 
+                    obj=hist
+                )
+                return False
+            
             end_date = datetime.now(UTC)
             start_date = end_date - timedelta(days=30)
             # gets the historical bars for calculating the average daily swing
-            bars = self.get_historical_bars(symbol, "1D", 7, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
+            bars = self.get_historical_bars(watchlist.symbol, "1D", 7, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
             hist = Helper.process_bar(bars, 7)
-            latest = self.get_latest_bar(symbol)
+            latest = self.get_latest_bar(watchlist.symbol)
             # the current price must be 25% less than the average daily swing
-            has_25_percent_swing = (hist["day_high"] - latest[symbol]["c"]) > hist["avg_daily_swing_25"]
+            has_25_percent_swing = (hist["day_high"] - latest[watchlist.symbol]["c"]) > hist["avg_daily_swing_25"]
             # has_50_percent_swing = (hist["day_high"] - latest[symbol]["c"]) > hist["avg_daily_swing_50"]
             # has_75_percent_swing = (hist["day_high"] - latest[symbol]["c"]) > hist["avg_daily_swing_75"]
-            return has_25_percent_swing
+            if not has_25_percent_swing:
+                ret = False
+                self.data_client.log(
+                    message=f"Stock {watchlist.symbol} does not have 25% daily swing in price.", 
+                    symbol=watchlist.symbol, 
+                    log_level=LogLevel.WARNING, 
+                    obj=hist
+                )
+            return ret
         except Exception as e:
             self.data_client.log(
-                message=f"Error processing buy {symbol}", 
-                symbol=symbol, 
+                message=f"Error processing buy {watchlist.symbol}", 
+                symbol=watchlist.symbol, 
                 log_level=LogLevel.ERROR, 
                 obj={"error": str(e)}
             )

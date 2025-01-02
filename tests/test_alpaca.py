@@ -57,6 +57,10 @@ class TestAlpaca(unittest.TestCase):
         orders = self.client.get_order()
         self.assertGreater(len(orders), 0)
 
+    def test_get_order_by_id(self):
+        order = self.client.get_order(order_id="5c7d99fa-c4cb-4f5d-93ce-813839bf6226")
+        self.assertTrue(order)
+
     def test_get_asset(self):
         asset = self.client.get_asset("AMZN")
         self.assertIsNotNone(asset)

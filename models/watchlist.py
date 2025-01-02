@@ -11,6 +11,7 @@ class Watchlist(BaseModel):
     type: AssetType = None
     symbol: str = None
     is_active: bool = True
+    is_suspend: bool = False
     last_buy_at: datetime = None
     last_buy_session: str = None
     last_sell_at: datetime = None
