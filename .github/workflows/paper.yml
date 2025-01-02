@@ -2,8 +2,8 @@ name: Deploy Paper
 
 on:
   push:
-    branches-ignore:
-      - main
+    branches:
+      - dev
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}

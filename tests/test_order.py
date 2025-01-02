@@ -1,5 +1,7 @@
 import unittest
-from data.models import Order
+
+from models.order import Order
+
 
 class TestOrder(unittest.TestCase):
 

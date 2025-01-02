@@ -2,8 +2,7 @@ import json
 
 from fastapi import APIRouter, status
 
-
-from data.models import Order
+from models.order import Order
 from trader import Trader
 from common.helper import Helper
 
@@ -34,7 +33,7 @@ async def get_profit():
 
 @router.get("/position/")
 async def get_position():
-    ret = Trader().trading_client.get_positions()
+    ret = Trader().alpaca_trading_client.get_positions()
     return ret
 
 @router.get("/feed/")
