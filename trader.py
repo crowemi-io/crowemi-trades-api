@@ -90,7 +90,7 @@ class Trader():
                     log_level=LogLevel.INFO, 
                     symbol=watchlist.symbol
                 )
-                if client.process_buy(watchlist.symbol):
+                if client.process_buy(watchlist):
                     client.buy(watchlist)
             else:
                 client.data_client.log(
